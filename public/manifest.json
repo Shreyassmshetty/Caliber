@@ -2,7 +2,7 @@
   "background_color": "#0f172a",
   "dir": "ltr",
   "display": "standalone",
-  "name": "Caliber — Smart Nutrition &amp; Calorie Tracker",
+  "name": "Caliber — Smart Nutrition & Calorie Tracker",
   "orientation": "portrait",
   "scope": "/",
   "short_name": "Caliber",
@@ -39,11 +39,25 @@
   "categories": [
     "food",
     "health",
-    "health &amp; fitness",
+    "health & fitness",
     "lifestyle",
     "personalization",
     "photo",
     "productivity"
+  ],
+  "screenshots": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    }
   ],
   "share_target": {
     "method": "GET",
