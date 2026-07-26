@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <linearGradient id="fireGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Outer Ring -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#accentGrad)" stroke-width="20" stroke-linecap="round" opacity="0.25" />
+  
+  <!-- Calorie Progress Arc -->
+  <path d="M 256 96 A 160 160 0 1 1 116 178" fill="none" stroke="url(#accentGrad)" stroke-width="20" stroke-linecap="round" filter="url(#glow)" />
+
+  <!-- Center Flame / Calorie Icon -->
+  <g transform="translate(256, 256) scale(1.3)">
+    <path d="M0 -55 C20 -25 45 0 45 30 C45 60 25 75 0 75 C-25 75 -45 60 -45 30 C-45 0 -20 -25 0 -55 Z" fill="url(#fireGrad)" filter="url(#glow)" />
+    <path d="M0 -25 C10 -10 22 5 22 22 C22 38 12 48 0 48 C-12 48 -22 38 -22 22 C-22 5 -10 -10 0 -25 Z" fill="#ffffff" opacity="0.9" />
+  </g>
+
+  <!-- Brand Lettermark "C" -->
+  <text x="256" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="800" fill="#f8fafc" text-anchor="middle" letter-spacing="6">CALIBER</text>
+</svg>

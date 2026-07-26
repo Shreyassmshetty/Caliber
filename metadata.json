@@ -1,0 +1,6 @@
+{
+  "name": "Caliber",
+  "description": "A mobile-first calorie and nutrition tracker featuring smart calorie calculators, USDA search, and picture-based AI food identification.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

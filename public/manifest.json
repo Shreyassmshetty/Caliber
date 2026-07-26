@@ -1,0 +1,57 @@
+{
+  "background_color": "#0f172a",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Caliber — Smart Nutrition &amp; Calorie Tracker",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "Caliber",
+  "start_url": "/",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512 192x192 any",
+      "purpose": "any"
+    }
+  ],
+  "id": "/",
+  "description": "Caliber is an AI-powered smart nutrition and calorie tracker that lets you log meals with AI visual recognition, monitor daily macronutrients, track fitness goals, and analyze health analytics.",
+  "lang": "en",
+  "display_override": [
+    "minimal-ui",
+    "standalone",
+    "window-controls-overlay"
+  ],
+  "categories": [
+    "food",
+    "health",
+    "health &amp; fitness",
+    "lifestyle",
+    "personalization",
+    "photo",
+    "productivity"
+  ],
+  "share_target": {
+    "method": "GET",
+    "action": "/",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
