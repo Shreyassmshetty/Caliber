@@ -10,7 +10,7 @@ import { Settings } from './components/Settings';
 import { OfflineSyncBanner } from './components/OfflineSyncBanner';
 import { Apple, PlusCircle, Dumbbell, BarChart3, Settings as SettingsIcon, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import logo from './assets/images/caliber_logo_3_1784888605579.jpg';
+import logo from './assets/images/caliber_app_icon_1785420177978.jpg';
 
 
 const AppContent: React.FC = () => {
@@ -112,7 +112,7 @@ const AppContent: React.FC = () => {
 
         <div className="flex items-center gap-2.5">
           <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs bg-slate-950 flex items-center justify-center">
-            <img src={logo} alt="Caliber Logo" className="w-full h-full object-cover" />
+            <img src={logo} alt="Caliber Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
           <div>
             <h1 className="font-display font-bold text-sm tracking-tight text-neutral-dark dark:text-white">Caliber</h1>

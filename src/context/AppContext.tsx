@@ -433,11 +433,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       if (!authWindow) {
         setError("Popup blocked. Please enable popups for this site to sign in with Google.");
+        setLoading(false);
+        return;
       }
+
+      // Track when the popup is closed by user or due to redirect_uri_mismatch
+      const popupChecker = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(popupChecker);
+          setLoading(false);
+          // If login wasn't successful after popup closed
+          if (!localStorage.getItem('cnt_token')) {
+            setError(`Google sign-in popup was closed. If you got "Error 400: redirect_uri_mismatch", please add ${window.location.origin}/auth/google/callback to Authorized redirect URIs in Google Cloud Console.`);
+          }
+        }
+      }, 500);
+
     } catch (err: any) {
       console.error("Google Login initiation failed", err);
       setError(err?.message || "Could not start Google sign in.");
-    } finally {
       setLoading(false);
     }
   };

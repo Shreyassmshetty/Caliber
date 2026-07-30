@@ -13,19 +13,19 @@
       "src": "/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "512x512 192x192 any",
-      "purpose": "any"
+      "src": "/maskable-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "id": "/",
@@ -47,14 +47,14 @@
   ],
   "screenshots": [
     {
-      "src": "/logo.jpg",
-      "sizes": "1024x1024",
+      "src": "/pwa-wide-screenshot.jpg",
+      "sizes": "1280x720",
       "type": "image/jpeg",
       "form_factor": "wide"
     },
     {
-      "src": "/logo.jpg",
-      "sizes": "1024x1024",
+      "src": "/pwa-narrow-screenshot.jpg",
+      "sizes": "720x1280",
       "type": "image/jpeg",
       "form_factor": "narrow"
     }

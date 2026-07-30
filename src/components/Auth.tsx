@@ -66,14 +66,22 @@ export const Auth: React.FC = () => {
           {(error || localError) && (
             <div className="bg-red-50 text-red-600 p-4 rounded-xl text-xs font-medium border border-red-100 space-y-2">
               <p>{localError || error}</p>
-              {(error?.includes('redirect_uri') || error?.includes('invalid') || error?.includes('OAuth')) && (
-                <div className="text-[11px] text-red-700 bg-red-100/60 p-2.5 rounded-lg space-y-1">
-                  <p className="font-semibold">Need help with Google Sign-In?</p>
-                  <p>In Google Cloud Console under <strong>Authorized redirect URIs</strong>, add:</p>
-                  <code className="block bg-white/80 p-1 rounded font-mono text-[10px] break-all select-all">
-                    {window.location.origin}/auth/google/callback
-                  </code>
-                  <p className="mt-1">Or sign in directly using your email & password above!</p>
+              {(error?.includes('redirect_uri') || error?.includes('invalid') || error?.includes('OAuth') || error?.includes('Google') || error?.includes('closed')) && (
+                <div className="text-[11px] text-red-700 bg-red-100/60 p-3 rounded-lg space-y-2">
+                  <p className="font-semibold text-xs">How to fix "Error 400: redirect_uri_mismatch":</p>
+                  <p>In Google Cloud Console under <strong>APIs & Services &gt; Credentials &gt; OAuth 2.0 Client IDs</strong>, add these to <strong>Authorized redirect URIs</strong>:</p>
+                  <div className="space-y-1">
+                    <code className="block bg-white/90 p-1.5 rounded font-mono text-[10px] break-all select-all border border-red-200">
+                      {window.location.origin}/auth/google/callback
+                    </code>
+                    {window.location.origin.includes('ais-dev-') && (
+                      <code className="block bg-white/90 p-1.5 rounded font-mono text-[10px] break-all select-all border border-red-200">
+                        {window.location.origin.replace('ais-dev-', 'ais-pre-')}/auth/google/callback
+                      </code>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-red-600">If using Supabase Google Provider, also add your Supabase URL callback:<br/><span className="font-mono bg-white/80 px-1 rounded">https://&lt;your-project&gt;.supabase.co/auth/v1/callback</span></p>
+                  <p className="pt-1 font-medium text-[11px] text-gray-700">💡 Tip: You can also register or sign in directly with any email and password above!</p>
                 </div>
               )}
             </div>

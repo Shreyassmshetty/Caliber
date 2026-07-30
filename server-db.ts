@@ -4,10 +4,26 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'calorie-nutrition-tracker-secret-key-12345';
+
+// Initialize Supabase Client if environment variables are provided
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+let dbSupabase: SupabaseClient | null = null;
+
+if (supabaseUrl && supabaseKey) {
+  try {
+    dbSupabase = createClient(supabaseUrl, supabaseKey);
+    console.log(`[Supabase Status] Supabase database provider initialized successfully (${supabaseUrl})`);
+  } catch (err) {
+    console.warn("[Supabase Warning] Could not initialize Supabase client:", err);
+  }
+}
 
 // Initialize Firestore safely with a fallback flag
 let dbFirestore: Firestore | null = null;
@@ -241,10 +257,25 @@ export function verifyToken(token: string): { userId: string } | null {
   }
 }
 
-// ==================== FIRESTORE ADAPTERS WITH LOCAL DB FALLBACK ====================
+// ==================== DATABASE ADAPTERS (SUPABASE -> FIRESTORE -> LOCAL DB) ====================
 
 // 1. Get user by ID
 export async function getUserById(id: string): Promise<User | null> {
+  if (dbSupabase) {
+    try {
+      const { data, error } = await dbSupabase.from('users').select('*').eq('id', id).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          email: data.email,
+          passwordHash: data.password_hash || data.passwordHash,
+          profile: data.profile || {}
+        } as User;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] getUserById error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       const doc = await dbFirestore.collection('users').doc(id).get();
@@ -268,6 +299,21 @@ export async function getUserById(id: string): Promise<User | null> {
 // 2. Get user by email
 export async function getUserByEmail(email: string): Promise<User | null> {
   const normEmail = email.toLowerCase().trim();
+  if (dbSupabase) {
+    try {
+      const { data, error } = await dbSupabase.from('users').select('*').ilike('email', normEmail).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          email: data.email,
+          passwordHash: data.password_hash || data.passwordHash,
+          profile: data.profile || {}
+        } as User;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] getUserByEmail error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       const snap = await dbFirestore.collection('users').where('email', '==', normEmail).limit(1).get();
@@ -291,6 +337,23 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
 // 3. Create user
 export async function createUser(user: User): Promise<void> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('users').insert({
+        id: user.id,
+        email: user.email,
+        password_hash: user.passwordHash,
+        profile: user.profile
+      });
+      if (!error) {
+        console.log(`User ${user.id} created in Supabase`);
+        return;
+      }
+      console.warn("[Supabase Warning] createUser returned error:", error);
+    } catch (err) {
+      console.warn("[Supabase Warning] createUser error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(user.id).set({
@@ -311,6 +374,18 @@ export async function createUser(user: User): Promise<void> {
 
 // 4. Update user profile
 export async function updateUserProfile(userId: string, profile: UserProfile): Promise<void> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('users').update({ profile }).eq('id', userId);
+      if (!error) {
+        console.log(`User profile updated in Supabase for ${userId}`);
+        return;
+      }
+      console.warn("[Supabase Warning] updateUserProfile returned error:", error);
+    } catch (err) {
+      console.warn("[Supabase Warning] updateUserProfile error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(userId).update({ profile });
@@ -330,6 +405,32 @@ export async function updateUserProfile(userId: string, profile: UserProfile): P
 
 // 5. Get food entries
 export async function getFoodEntries(userId: string, dateStr?: string): Promise<FoodEntry[]> {
+  if (dbSupabase) {
+    try {
+      const { data, error } = await dbSupabase.from('food_entries').select('*').eq('user_id', userId);
+      if (!error && data) {
+        let entries = data.map((d: any) => ({
+          id: d.id,
+          userId: d.user_id || d.userId,
+          foodName: d.food_name || d.foodName,
+          calories: Number(d.calories || 0),
+          protein: Number(d.protein || 0),
+          carbs: Number(d.carbs || 0),
+          fat: Number(d.fat || 0),
+          servingSize: d.serving_size || d.servingSize || '1 serving',
+          quantity: Number(d.quantity || 1),
+          mealType: d.meal_type || d.mealType,
+          loggedAt: d.logged_at || d.loggedAt
+        } as FoodEntry));
+        if (dateStr) {
+          entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
+        }
+        return entries;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] getFoodEntries error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       const snap = await dbFirestore.collection('users').doc(userId).collection('foodEntries').get();
@@ -352,6 +453,30 @@ export async function getFoodEntries(userId: string, dateStr?: string): Promise<
 
 // 6. Log food entry
 export async function logFoodEntry(entry: FoodEntry): Promise<void> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('food_entries').insert({
+        id: entry.id,
+        user_id: entry.userId,
+        food_name: entry.foodName,
+        calories: entry.calories,
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+        serving_size: entry.servingSize,
+        quantity: entry.quantity,
+        meal_type: entry.mealType,
+        logged_at: entry.loggedAt
+      });
+      if (!error) {
+        console.log(`Food entry ${entry.id} saved to Supabase`);
+        return;
+      }
+      console.warn("[Supabase Warning] logFoodEntry returned error:", error);
+    } catch (err) {
+      console.warn("[Supabase Warning] logFoodEntry error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(entry.userId).collection('foodEntries').doc(entry.id).set({
@@ -379,6 +504,17 @@ export async function logFoodEntry(entry: FoodEntry): Promise<void> {
 
 // 7. Delete food entry
 export async function deleteFoodEntry(userId: string, id: string): Promise<boolean> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('food_entries').delete().eq('id', id).eq('user_id', userId);
+      if (!error) {
+        console.log(`Food entry ${id} deleted from Supabase`);
+        return true;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] deleteFoodEntry error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(userId).collection('foodEntries').doc(id).delete();
@@ -400,6 +536,27 @@ export async function deleteFoodEntry(userId: string, id: string): Promise<boole
 
 // 8. Get exercises
 export async function getExercises(userId: string, dateStr?: string): Promise<ExerciseEntry[]> {
+  if (dbSupabase) {
+    try {
+      const { data, error } = await dbSupabase.from('exercises').select('*').eq('user_id', userId);
+      if (!error && data) {
+        let entries = data.map((d: any) => ({
+          id: d.id,
+          userId: d.user_id || d.userId,
+          activityType: d.activity_type || d.activityType,
+          durationMinutes: Number(d.duration_minutes || d.durationMinutes || 0),
+          caloriesBurned: Number(d.calories_burned || d.caloriesBurned || 0),
+          loggedAt: d.logged_at || d.loggedAt
+        } as ExerciseEntry));
+        if (dateStr) {
+          entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
+        }
+        return entries;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] getExercises error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       const snap = await dbFirestore.collection('users').doc(userId).collection('exercises').get();
@@ -422,6 +579,25 @@ export async function getExercises(userId: string, dateStr?: string): Promise<Ex
 
 // 9. Log exercise
 export async function logExercise(entry: ExerciseEntry): Promise<void> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('exercises').insert({
+        id: entry.id,
+        user_id: entry.userId,
+        activity_type: entry.activityType,
+        duration_minutes: entry.durationMinutes,
+        calories_burned: entry.caloriesBurned,
+        logged_at: entry.loggedAt
+      });
+      if (!error) {
+        console.log(`Exercise entry ${entry.id} saved to Supabase`);
+        return;
+      }
+      console.warn("[Supabase Warning] logExercise returned error:", error);
+    } catch (err) {
+      console.warn("[Supabase Warning] logExercise error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(entry.userId).collection('exercises').doc(entry.id).set({
@@ -444,6 +620,17 @@ export async function logExercise(entry: ExerciseEntry): Promise<void> {
 
 // 10. Delete exercise
 export async function deleteExercise(userId: string, id: string): Promise<boolean> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('exercises').delete().eq('id', id).eq('user_id', userId);
+      if (!error) {
+        console.log(`Exercise entry ${id} deleted from Supabase`);
+        return true;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] deleteExercise error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(userId).collection('exercises').doc(id).delete();
@@ -465,6 +652,26 @@ export async function deleteExercise(userId: string, id: string): Promise<boolea
 
 // 11. Get custom meals
 export async function getCustomMeals(userId: string): Promise<CustomMeal[]> {
+  if (dbSupabase) {
+    try {
+      const { data, error } = await dbSupabase.from('custom_meals').select('*').eq('user_id', userId);
+      if (!error && data) {
+        return data.map((d: any) => ({
+          id: d.id,
+          userId: d.user_id || d.userId,
+          mealName: d.meal_name || d.mealName,
+          ingredients: d.ingredients || [],
+          totalCalories: Number(d.total_calories || d.totalCalories || 0),
+          totalProtein: Number(d.total_protein || d.totalProtein || 0),
+          totalCarbs: Number(d.total_carbs || d.totalCarbs || 0),
+          totalFat: Number(d.total_fat || d.totalFat || 0),
+          createdAt: d.created_at || d.createdAt
+        } as CustomMeal));
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] getCustomMeals error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       const snap = await dbFirestore.collection('users').doc(userId).collection('customMeals').get();
@@ -479,6 +686,28 @@ export async function getCustomMeals(userId: string): Promise<CustomMeal[]> {
 
 // 12. Create custom meal
 export async function createCustomMeal(meal: CustomMeal): Promise<void> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('custom_meals').insert({
+        id: meal.id,
+        user_id: meal.userId,
+        meal_name: meal.mealName,
+        ingredients: meal.ingredients,
+        total_calories: meal.totalCalories,
+        total_protein: meal.totalProtein,
+        total_carbs: meal.totalCarbs,
+        total_fat: meal.totalFat,
+        created_at: meal.createdAt
+      });
+      if (!error) {
+        console.log(`Custom meal ${meal.id} saved to Supabase`);
+        return;
+      }
+      console.warn("[Supabase Warning] createCustomMeal returned error:", error);
+    } catch (err) {
+      console.warn("[Supabase Warning] createCustomMeal error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(meal.userId).collection('customMeals').doc(meal.id).set({
@@ -504,6 +733,17 @@ export async function createCustomMeal(meal: CustomMeal): Promise<void> {
 
 // 13. Delete custom meal
 export async function deleteCustomMeal(userId: string, id: string): Promise<boolean> {
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('custom_meals').delete().eq('id', id).eq('user_id', userId);
+      if (!error) {
+        console.log(`Custom meal ${id} deleted from Supabase`);
+        return true;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] deleteCustomMeal error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       await dbFirestore.collection('users').doc(userId).collection('customMeals').doc(id).delete();
@@ -525,6 +765,22 @@ export async function deleteCustomMeal(userId: string, id: string): Promise<bool
 
 // 14. Get water log
 export async function getWaterLog(userId: string, dateStr: string): Promise<WaterLog | null> {
+  if (dbSupabase) {
+    try {
+      const { data, error } = await dbSupabase.from('water_logs').select('*').eq('user_id', userId).eq('date_str', dateStr).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          userId: data.user_id || data.userId,
+          dateStr: data.date_str || data.dateStr,
+          glasses: Number(data.glasses || 0),
+          updatedAt: data.updated_at || data.updatedAt
+        } as WaterLog;
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] getWaterLog error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       const doc = await dbFirestore.collection('users').doc(userId).collection('waterIntake').doc(dateStr).get();
@@ -542,6 +798,31 @@ export async function getWaterLog(userId: string, dateStr: string): Promise<Wate
 // 15. Update water log
 export async function updateWaterLog(userId: string, dateStr: string, glasses: number): Promise<WaterLog> {
   const finalGlasses = Math.max(0, Number(glasses));
+  if (dbSupabase) {
+    try {
+      const logData = {
+        id: `w_${userId}_${dateStr}`,
+        user_id: userId,
+        date_str: dateStr,
+        glasses: finalGlasses,
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await dbSupabase.from('water_logs').upsert(logData, { onConflict: 'user_id,date_str' }).select().maybeSingle();
+      if (!error) {
+        console.log(`Water log updated in Supabase for user ${userId} date ${dateStr}`);
+        return {
+          id: data?.id || logData.id,
+          userId,
+          dateStr,
+          glasses: finalGlasses,
+          updatedAt: logData.updated_at
+        };
+      }
+      console.warn("[Supabase Warning] updateWaterLog returned error:", error);
+    } catch (err) {
+      console.warn("[Supabase Warning] updateWaterLog error:", err);
+    }
+  }
   if (dbFirestore) {
     try {
       const ref = dbFirestore.collection('users').doc(userId).collection('waterIntake').doc(dateStr);
@@ -576,4 +857,5 @@ export async function updateWaterLog(userId: string, dateStr: string, glasses: n
     return db.waterLogs[logIdx];
   }
 }
+
 

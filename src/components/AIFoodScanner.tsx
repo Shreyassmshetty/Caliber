@@ -113,7 +113,7 @@ export const AIFoodScanner: React.FC<AIFoodScannerProps> = ({ onFoodFound, onClo
       {previewUrl ? (
         <div className="space-y-4 mb-4">
           <div className="relative rounded-2xl overflow-hidden aspect-video border border-gray-100 bg-black">
-            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             <button
               onClick={() => {
                 setPreviewUrl(null);
