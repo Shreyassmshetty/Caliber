@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with onboarding data, TDEE calculator targets, and preferences.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "age": {
+          "type": "integer"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "sex": {
+          "type": "string",
+          "enum": ["male", "female"]
+        },
+        "activityLevel": {
+          "type": "string",
+          "enum": ["sedentary", "light", "moderate", "active", "very_active"]
+        },
+        "goal": {
+          "type": "string",
+          "enum": ["lose", "maintain", "gain"]
+        },
+        "dailyCalorieTarget": {
+          "type": "number"
+        },
+        "macroProteinPercentage": {
+          "type": "number"
+        },
+        "macroCarbsPercentage": {
+          "type": "number"
+        },
+        "macroFatPercentage": {
+          "type": "number"
+        },
+        "onboarded": {
+          "type": "boolean"
+        },
+        "hideCaloriesRemaining": {
+          "type": "boolean"
+        }
+      },
+      "required": ["email"]
+    },
+    "FoodEntry": {
+      "title": "Food Entry",
+      "description": "A food item logged under a meal category.",
+      "type": "object",
+      "properties": {
+        "foodName": {
+          "type": "string"
+        },
+        "calories": {
+          "type": "number"
+        },
+        "protein": {
+          "type": "number"
+        },
+        "carbs": {
+          "type": "number"
+        },
+        "fat": {
+          "type": "number"
+        },
+        "servingSize": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "mealType": {
+          "type": "string",
+          "enum": ["breakfast", "lunch", "dinner", "snacks"]
+        },
+        "loggedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["foodName", "calories", "protein", "carbs", "fat", "servingSize", "quantity", "mealType", "loggedAt"]
+    },
+    "ExerciseEntry": {
+      "title": "Exercise Entry",
+      "description": "An exercise activity logged with duration and estimated calories burned.",
+      "type": "object",
+      "properties": {
+        "activityType": {
+          "type": "string"
+        },
+        "durationMinutes": {
+          "type": "number"
+        },
+        "caloriesBurned": {
+          "type": "number"
+        },
+        "loggedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["activityType", "durationMinutes", "caloriesBurned", "loggedAt"]
+    },
+    "CustomMeal": {
+      "title": "Custom Meal",
+      "description": "A custom multi-ingredient recipe saved for quick logging.",
+      "type": "object",
+      "properties": {
+        "mealName": {
+          "type": "string"
+        },
+        "ingredients": {
+          "type": "string",
+          "description": "Serialized list of ingredients in this custom meal."
+        },
+        "totalCalories": {
+          "type": "number"
+        },
+        "totalProtein": {
+          "type": "number"
+        },
+        "totalCarbs": {
+          "type": "number"
+        },
+        "totalFat": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["mealName", "totalCalories", "totalProtein", "totalCarbs", "totalFat", "createdAt"]
+    },
+    "WaterLog": {
+      "title": "Water Log",
+      "description": "Daily water intake logged in units of glasses.",
+      "type": "object",
+      "properties": {
+        "glasses": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["glasses", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection."
+    },
+    "/users/{userId}/foodEntries/{entryId}": {
+      "schema": "FoodEntry",
+      "description": "Food entries subcollection for a user."
+    },
+    "/users/{userId}/exercises/{exerciseId}": {
+      "schema": "ExerciseEntry",
+      "description": "Exercise entries subcollection for a user."
+    },
+    "/users/{userId}/customMeals/{mealId}": {
+      "schema": "CustomMeal",
+      "description": "Custom recipes subcollection for a user."
+    },
+    "/users/{userId}/waterIntake/{dateStr}": {
+      "schema": "WaterLog",
+      "description": "Daily water intake tracker keyed by date (YYYY-MM-DD)."
+    }
+  }
+}
