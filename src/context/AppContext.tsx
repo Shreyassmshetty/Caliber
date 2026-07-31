@@ -342,11 +342,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
 
+  const fetchWithRetry = async (url: string, options?: RequestInit, retries = 3, delay = 1000): Promise<Response> => {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchWithRetry(url, options, retries - 1, delay * 2);
+      }
+      throw err;
+    }
+  };
+
   const signup = async (email: string, password: string): Promise<boolean> => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/signup', {
+      const res = await fetchWithRetry('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -363,7 +376,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUser(data.user);
       return true;
     } catch (err) {
-      setError("Network error. Please try again.");
+      setError("Network error. Please check your connection and try again.");
       return false;
     } finally {
       setLoading(false);
@@ -374,7 +387,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetchWithRetry('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -391,7 +404,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUser(data.user);
       return true;
     } catch (err) {
-      setError("Network error. Please try again.");
+      setError("Network error. Please check your connection and try again.");
       return false;
     } finally {
       setLoading(false);
@@ -409,13 +422,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setError(null);
   };
 
-  // Google OAuth login flow (popup-based)
+  // Google OAuth login flow (popup-based with mobile/APK fallback)
   const googleLogin = async () => {
     setError(null);
     setLoading(true);
     try {
       const redirectUri = `${window.location.origin}/auth/google/callback`;
-      const res = await fetch(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
+      const res = await fetchWithRetry(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
       
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -424,7 +437,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       const { url } = await res.json();
       
-      // Open the authorization URL directly in a popup
+      // Open the authorization URL directly in a popup, or navigate directly if popup blocked / mobile APK
       const authWindow = window.open(
         url,
         'google_oauth_popup',
@@ -432,8 +445,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       );
       
       if (!authWindow) {
-        setError("Popup blocked. Please enable popups for this site to sign in with Google.");
-        setLoading(false);
+        // Fallback for mobile APK / TWA / popup blockers: navigate directly to auth URL
+        window.location.href = url;
         return;
       }
 
@@ -451,7 +464,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     } catch (err: any) {
       console.error("Google Login initiation failed", err);
-      setError(err?.message || "Could not start Google sign in.");
+      setError(err?.message || "Network error. Please check your connection and try again.");
       setLoading(false);
     }
   };

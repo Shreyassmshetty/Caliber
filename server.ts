@@ -319,7 +319,8 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req: Request
                     }, '*');
                     window.close();
                   } else {
-                    alert('Log in simulated! Token: ' + data.token);
+                    localStorage.setItem('cnt_token', data.token);
+                    window.location.href = '/';
                   }
                 } else {
                   const errData = await response.json();
@@ -438,6 +439,7 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req: Request
               }, '*');
               window.close();
             } else {
+              localStorage.setItem('cnt_token', '${jwtToken}');
               window.location.href = '/';
             }
           </script>
