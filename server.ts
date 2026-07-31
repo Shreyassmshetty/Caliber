@@ -332,7 +332,7 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req: Request
                     window.close();
                   } else {
                     localStorage.setItem('cnt_token', data.token);
-                    window.location.href = '/';
+                    window.location.href = '/?token=' + encodeURIComponent(data.token);
                   }
                 } else {
                   const errData = await response.json();
@@ -452,7 +452,7 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req: Request
               window.close();
             } else {
               localStorage.setItem('cnt_token', '${jwtToken}');
-              window.location.href = '/';
+              window.location.href = '/?token=' + encodeURIComponent('${jwtToken}');
             }
           </script>
           <p>Authentication successful. This window should close automatically.</p>

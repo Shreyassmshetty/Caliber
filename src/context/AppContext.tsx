@@ -53,7 +53,30 @@ export const getLocalDateString = (d = new Date()) => {
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('cnt_token'));
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      if (urlToken) {
+        localStorage.setItem('cnt_token', urlToken);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return urlToken;
+      }
+      const hash = window.location.hash;
+      if (hash.includes('token=')) {
+        const match = hash.match(/token=([^&]+)/);
+        if (match && match[1]) {
+          const hashToken = decodeURIComponent(match[1]);
+          localStorage.setItem('cnt_token', hashToken);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return hashToken;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return localStorage.getItem('cnt_token');
+  });
   const [selectedDate, setSelectedDateState] = useState<string>(getLocalDateString());
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
   const [exercises, setExercises] = useState<ExerciseEntry[]>([]);
