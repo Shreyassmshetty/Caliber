@@ -1,37 +1,71 @@
 {
-  "dir": "auto",
-  "name": "Caliber — Smart Nutrition &amp; Calorie Tracker",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#0f172a",
+  "dir": "ltr",
   "display": "standalone",
-  "start_url": "https://caliberapp.vercel.app/?launchedfrom=homescreen",
-  "scope": "https://caliberapp.vercel.app",
-  "id": "https://caliberapp.vercel.app/KYrKTM6CQ0v2fgydvO2P",
-  "prefer_related_applications": false,
+  "name": "Caliber — Smart Nutrition & Calorie Tracker",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "Caliber",
+  "start_url": "/",
+  "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "https://oouxkyuexvzylckxeeks.supabase.co/storage/v1/object/public/pgsstoragebucket/qLLweibGzoy7gRl54ZyQ/NyzUALFxCeMiQjr.png",
-      "sizes": "512x512",
+      "src": "/icon-192.png",
       "type": "image/png",
+      "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "https://oouxkyuexvzylckxeeks.supabase.co/storage/v1/object/public/pgsstoragebucket/qLLweibGzoy7gRl54ZyQ/eXutWQyZFKRswck.png",
-      "sizes": "512x512",
+      "src": "blob:https://gemini.google.com/a128aedc-0f57-4a20-b8b0-3199dc07cd50",
       "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "blob:https://gemini.google.com/a128aedc-0f57-4a20-b8b0-3199dc07cd50",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "maskable"
     }
   ],
-  "protocol_handlers": [
+  "id": "/",
+  "description": "Caliber is an AI-powered smart nutrition and calorie tracker that lets you log meals with AI visual recognition, monitor daily macronutrients, track fitness goals, and analyze health analytics.",
+  "lang": "en",
+  "display_override": [
+    "minimal-ui",
+    "standalone",
+    "window-controls-overlay"
+  ],
+  "categories": [
+    "food",
+    "health",
+    "health & fitness",
+    "lifestyle",
+    "personalization",
+    "photo",
+    "productivity"
+  ],
+  "screenshots": [
     {
-      "protocol": "web+pwa",
-      "url": "https://caliberapp.vercel.app/?launchedfrom=homescreen&amp;pwaprotocolredirect=%s"
+      "src": "/pwa-wide-screenshot.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide"
     },
     {
-      "protocol": "web+jlbxwwna",
-      "url": "https://caliberapp.vercel.app/?launchedfrom=homescreen&amp;pwaprotocolredirect=%s"
+      "src": "/pwa-narrow-screenshot.jpg",
+      "sizes": "720x1280",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
     }
   ],
-  "short_name": "Caliber",
-  "description": "Caliber is an AI-powered smart nutrition and calorie tracker that lets you log meals with AI visual recognition, monitor daily macronutrients, track fitness goals, and analyze health analytics."
+  "share_target": {
+    "method": "GET",
+    "action": "/",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }
