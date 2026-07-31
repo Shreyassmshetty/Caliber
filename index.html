@@ -7,7 +7,9 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="alternate icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- <link rel="manifest" href="/manifest.json" /> -->
+    <link rel="manifest" href="https://progressier.app/KYrKTM6CQ0v2fgydvO2P/progressier.json">
+    <script defer src="https://progressier.app/KYrKTM6CQ0v2fgydvO2P/script.js"></script>
     <title>Caliber — Smart Nutrition & Calorie Tracker</title>
   </head>
   <body>
@@ -16,7 +18,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
+          navigator.serviceWorker.register('/progressier.js').catch(() => {});
         });
       }
     </script>
