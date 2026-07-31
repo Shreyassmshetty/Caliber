@@ -10,19 +10,13 @@
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any"
-    },
-    {
-      "src": "blob:https://gemini.google.com/a128aedc-0f57-4a20-b8b0-3199dc07cd50",
+      "src": "https://oouxkyuexvzylckxeeks.supabase.co/storage/v1/object/public/pgsstoragebucket/qLLweibGzoy7gRl54ZyQ/NyzUALFxCeMiQjr.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "blob:https://gemini.google.com/a128aedc-0f57-4a20-b8b0-3199dc07cd50",
+      "src": "https://oouxkyuexvzylckxeeks.supabase.co/storage/v1/object/public/pgsstoragebucket/qLLweibGzoy7gRl54ZyQ/NyzUALFxCeMiQjr.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
