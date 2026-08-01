@@ -2,36 +2,24 @@ import React, { useState, useRef } from 'react';
 import { Camera, Upload, Sparkles, Check, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
-interface AIFoodScannerProps {
-  onFoodFound: (food: {
-    foodName: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    servingSize: string;
-  }) => void;
-  onClose: () => void;
-}
-
-export const AIFoodScanner: React.FC<AIFoodScannerProps> = ({ onFoodFound, onClose }) => {
+export const AIFoodScanner = ({ onFoodFound, onClose }) => {
   const { token } = useApp();
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [mimeType, setMimeType] = useState<string>('image/jpeg');
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [imageBase64, setImageBase64] = useState(null);
+  const [mimeType, setMimeType] = useState('image/jpeg');
   const [analyzing, setAnalyzing] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiError, setAiError] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Handle local file selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setMimeType(file.type || 'image/jpeg');
     const reader = new FileReader();
     reader.onloadend = () => {
-      const resultStr = reader.result as string;
+      const resultStr = reader.result;
       setPreviewUrl(resultStr);
       setImageBase64(resultStr);
       setAiError(null);
@@ -53,7 +41,7 @@ export const AIFoodScanner: React.FC<AIFoodScannerProps> = ({ onFoodFound, onClo
 
     try {
       const res = await fetch('/api/ai/analyze', {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -77,7 +65,7 @@ export const AIFoodScanner: React.FC<AIFoodScannerProps> = ({ onFoodFound, onClo
         fat: Number(data.fat || 10),
         servingSize: data.servingSize || "1 portion"
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setAiError(err.message || "Failed to parse meal image. Make sure it's a clear photo of food.");
     } finally {

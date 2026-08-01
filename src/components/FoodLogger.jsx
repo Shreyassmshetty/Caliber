@@ -5,21 +5,21 @@ import { BarcodeScanner } from './BarcodeScanner';
 import { AIFoodScanner } from './AIFoodScanner';
 import { VoiceFoodInput } from './VoiceFoodInput';
 
-export const FoodLogger: React.FC = () => {
+export const FoodLogger = () => {
   const { logFood, customMeals, saveCustomMeal, deleteCustomMeal } = useApp();
 
   // Navigation tab inside food logger
-  const [activeTab, setActiveTab] = useState<'search' | 'manual' | 'builder' | 'recipes'>('search');
+  const [activeTab, setActiveTab] = useState('search');
 
   // Search States
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
   // Selected food item for logging configuration
-  const [selectedFood, setSelectedFood] = useState<any | null>(null);
-  const [logMealType, setLogMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snacks'>('breakfast');
-  const [logQuantity, setLogQuantity] = useState<number>(1);
+  const [selectedFood, setSelectedFood] = useState(null);
+  const [logMealType, setLogMealType] = useState('breakfast');
+  const [logQuantity, setLogQuantity] = useState(1);
   const [customServing, setCustomServing] = useState('');
 
   // Manual Logger State
@@ -29,14 +29,14 @@ export const FoodLogger: React.FC = () => {
   const [manualCarbs, setManualCarbs] = useState('');
   const [manualFat, setManualFat] = useState('');
   const [manualServing, setManualServing] = useState('1 serving');
-  const [manualCategory, setManualCategory] = useState<'breakfast' | 'lunch' | 'dinner' | 'snacks'>('breakfast');
+  const [manualCategory, setManualCategory] = useState('breakfast');
 
   // Recipe Builder States
   const [recipeName, setRecipeName] = useState('');
-  const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
+  const [recipeIngredients, setRecipeIngredients] = useState([]);
   const [recipeIngredientSearch, setRecipeIngredientSearch] = useState('');
   const [recipeSearchLoading, setRecipeSearchLoading] = useState(false);
-  const [recipeSearchResults, setRecipeSearchResults] = useState<any[]>([]);
+  const [recipeSearchResults, setRecipeSearchResults] = useState([]);
 
   // Modals
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
@@ -44,9 +44,9 @@ export const FoodLogger: React.FC = () => {
   const [showVoiceInput, setShowVoiceInput] = useState(false);
 
   // Notification feedback
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState(null);
 
-  const showNotification = (msg: string) => {
+  const showNotification = (msg) => {
     setNotification(msg);
     setTimeout(() => {
       setNotification(null);
@@ -66,7 +66,7 @@ export const FoodLogger: React.FC = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
-  const performSearch = async (query: string) => {
+  const performSearch = async (query) => {
     setSearchLoading(true);
     try {
       const res = await fetch(`/api/food/search?q=${encodeURIComponent(query)}`);
@@ -82,7 +82,7 @@ export const FoodLogger: React.FC = () => {
   };
 
   // Handle direct item selection from standard search, scanner, or OCR
-  const handleSelectFood = (food: any) => {
+  const handleSelectFood = (food) => {
     setSelectedFood({
       foodName: food.foodName,
       calories: food.calories,
@@ -106,7 +106,7 @@ export const FoodLogger: React.FC = () => {
       fat: Number(selectedFood.fat),
       servingSize: customServing || selectedFood.servingSize,
       quantity: Number(logQuantity),
-      mealType: logMealType,
+      mealType,
       loggedAt: new Date().toISOString()
     };
 
@@ -121,19 +121,19 @@ export const FoodLogger: React.FC = () => {
   };
 
   // Manual Log Submission
-  const handleManualSubmit = async (e: React.FormEvent) => {
+  const handleManualSubmit = async (e) => {
     e.preventDefault();
     if (!manualName || !manualCalories) return;
 
     const payload = {
-      foodName: manualName,
+      foodName,
       calories: Number(manualCalories),
       protein: Number(manualProtein || 0),
       carbs: Number(manualCarbs || 0),
       fat: Number(manualFat || 0),
       servingSize: manualServing || "1 serving",
-      quantity: 1,
-      mealType: manualCategory,
+      quantity,
+      mealType,
       loggedAt: new Date().toISOString()
     };
 
@@ -151,7 +151,7 @@ export const FoodLogger: React.FC = () => {
   };
 
   // Recipe Builder Handlers
-  const handleRecipeSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRecipeSearch = async (e) => {
     const val = e.target.value;
     setRecipeIngredientSearch(val);
     if (val.trim().length > 1) {
@@ -172,7 +172,7 @@ export const FoodLogger: React.FC = () => {
     }
   };
 
-  const addIngredientToRecipe = (food: any) => {
+  const addIngredientToRecipe = (food) => {
     setRecipeIngredients(prev => [
       ...prev,
       {
@@ -189,7 +189,7 @@ export const FoodLogger: React.FC = () => {
     setRecipeSearchResults([]);
   };
 
-  const updateIngredientQty = (index: number, qty: number) => {
+  const updateIngredientQty = (index, qty) => {
     setRecipeIngredients(prev => {
       const copy = [...prev];
       copy[index].quantity = Math.max(0.1, qty);
@@ -197,7 +197,7 @@ export const FoodLogger: React.FC = () => {
     });
   };
 
-  const removeIngredientFromRecipe = (index: number) => {
+  const removeIngredientFromRecipe = (index) => {
     setRecipeIngredients(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -220,8 +220,8 @@ export const FoodLogger: React.FC = () => {
     if (!recipeName || recipeIngredients.length === 0) return;
 
     const payload = {
-      mealName: recipeName,
-      ingredients: recipeIngredients,
+      mealName,
+      ingredients,
       totalCalories: recipeTotals.calories,
       totalProtein: recipeTotals.protein,
       totalCarbs: recipeTotals.carbs,
@@ -238,7 +238,7 @@ export const FoodLogger: React.FC = () => {
   };
 
   // Log saved custom recipe directly
-  const handleLogSavedRecipe = async (meal: any) => {
+  const handleLogSavedRecipe = async (meal) => {
     const payload = {
       foodName: meal.mealName,
       calories: meal.totalCalories,
@@ -246,8 +246,8 @@ export const FoodLogger: React.FC = () => {
       carbs: meal.totalCarbs,
       fat: meal.totalFat,
       servingSize: "1 custom recipe portion",
-      quantity: 1,
-      mealType: logMealType, // uses current dashboard log category
+      quantity,
+      mealType, // uses current dashboard log category
       loggedAt: new Date().toISOString()
     };
 
@@ -449,10 +449,10 @@ export const FoodLogger: React.FC = () => {
                 <h4 className="font-semibold text-xs uppercase tracking-wider text-gray-400 mb-1">Quick Presets</h4>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { name: "Coffee with Milk", cal: 45, p: 2, c: 5, f: 2, s: "1 cup" },
-                  { name: "Scrambled Eggs (2)", cal: 140, p: 12, c: 1, f: 10, s: "2 large eggs" },
-                  { name: "Snack Almonds", cal: 164, p: 6, c: 6, f: 14, s: "28g" },
-                  { name: "Whey Shake", cal: 140, p: 25, c: 4, f: 2, s: "1 scoop in water" }
+                  { name: "Coffee with Milk", cal, p, c, f, s: "1 cup" },
+                  { name: "Scrambled Eggs (2)", cal, p, c, f, s: "2 large eggs" },
+                  { name: "Snack Almonds", cal, p, c, f, s: "28g" },
+                  { name: "Whey Shake", cal, p, c, f, s: "1 scoop in water" }
                 ].map((item, index) => (
                   <button
                     key={index}
@@ -542,15 +542,15 @@ export const FoodLogger: React.FC = () => {
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category / Meal</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { id: 'breakfast', label: '🍳 Bfast' },
-                  { id: 'lunch', label: '🥗 Lunch' },
-                  { id: 'dinner', label: '🥩 Dinner' },
-                  { id: 'snacks', label: '🍎 Snack' },
+                  { id, label: '🍳 Bfast' },
+                  { id, label: '🥗 Lunch' },
+                  { id, label: '🥩 Dinner' },
+                  { id, label: '🍎 Snack' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setLogMealType(item.id as any)}
+                    onClick={() => setLogMealType(item.id)}
                     className={`py-2 text-[11px] font-semibold rounded-xl text-center transition ${
                       logMealType === item.id ? 'bg-primary text-white shadow-sm' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                     }`}
@@ -653,15 +653,15 @@ export const FoodLogger: React.FC = () => {
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Meal category</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { id: 'breakfast', label: 'Bfast' },
-                  { id: 'lunch', label: 'Lunch' },
-                  { id: 'dinner', label: 'Dinner' },
-                  { id: 'snacks', label: 'Snack' }
+                  { id: 'Breakfast', label: 'Breakfast' },
+                  { id: 'Lunch', label: 'Lunch' },
+                  { id: 'Dinner', label: 'Dinner' },
+                  { id: 'Snack', label: 'Snack' }
                 ].map((item) => (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setManualCategory(item.id as any)}
+                    onClick={() => setManualCategory(item.id)}
                     className={`py-2 text-[11px] font-semibold rounded-xl text-center transition ${
                       manualCategory === item.id ? 'bg-primary text-white shadow-sm' : 'bg-gray-50 text-gray-600'
                     }`}
@@ -826,14 +826,14 @@ export const FoodLogger: React.FC = () => {
             <span className="font-bold text-gray-500 uppercase tracking-wide">Target Category:</span>
             <div className="flex gap-1">
               {[
-                { id: 'breakfast', label: '🍳 Bfast' },
-                { id: 'lunch', label: '🥗 Lunch' },
-                { id: 'dinner', label: '🥩 Dinner' },
-                { id: 'snacks', label: '🍎 Snack' }
+                { id, label: '🍳 Bfast' },
+                { id, label: '🥗 Lunch' },
+                { id, label: '🥩 Dinner' },
+                { id, label: '🍎 Snack' }
               ].map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setLogMealType(item.id as any)}
+                  onClick={() => setLogMealType(item.id)}
                   className={`px-2.5 py-1 rounded-lg font-semibold transition ${
                     logMealType === item.id ? 'bg-primary/15 text-primary' : 'bg-gray-50 text-gray-500'
                   }`}

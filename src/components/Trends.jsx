@@ -3,7 +3,7 @@ import { useApp, getLocalDateString } from '../context/AppContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp, AlertCircle, Sparkles, CheckCircle, BarChart3 } from 'lucide-react';
 
-export const Trends: React.FC = () => {
+export const Trends = () => {
   const { foodEntries, exercises, user } = useApp();
   const calorieTarget = user?.profile?.dailyCalorieTarget || 2000;
 
@@ -53,10 +53,10 @@ export const Trends: React.FC = () => {
         dateStr,
         dayName,
         isWeekend,
-        Target: calorieTarget,
-        Intake: dayIntake,
-        ActiveBurn: dayBurn,
-        NetIntake: dayIntake - dayBurn,
+        Target,
+        Intake,
+        ActiveBurn,
+        NetIntake,
       });
     }
 
@@ -74,7 +74,7 @@ export const Trends: React.FC = () => {
     const diffPct = Math.round(((avgWeekendIntake - avgWeekdayIntake) / avgWeekdayIntake) * 100);
 
     let summaryText = "";
-    let status: 'good' | 'warning' | 'info' = 'info';
+    let status= 'info';
 
     if (diffPct > 5) {
       summaryText = `Your average intake was ${diffPct}% higher on weekends compared to weekdays. Try meal prepping on Friday to stay on budget!`;
@@ -111,16 +111,16 @@ export const Trends: React.FC = () => {
         {/* Recharts responsive stage */}
         <div className="w-full h-64 text-[10px] mt-4 font-mono">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={weeklyData} margin={{ top, right, left, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
               <XAxis dataKey="dayName" stroke="#9ca3af" axisLine={false} tickLine={false} />
               <YAxis stroke="#9ca3af" axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#ffffff',
-                  borderRadius: '16px',
+                  borderRadius,
                   border: '1px solid #e5e7eb',
-                  fontSize: '11px',
+                  fontSize,
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
                 }}
               />
@@ -140,7 +140,7 @@ export const Trends: React.FC = () => {
                 dataKey="Intake"
                 stroke="var(--color-primary)"
                 strokeWidth={2.5}
-                dot={{ r: 4, strokeWidth: 0, fill: 'var(--color-primary)' }}
+                dot={{ r, strokeWidth, fill: 'var(--color-primary)' }}
                 activeDot={{ r: 6 }}
               />
               <Line
@@ -149,7 +149,7 @@ export const Trends: React.FC = () => {
                 dataKey="ActiveBurn"
                 stroke="#3b82f6"
                 strokeWidth={1.5}
-                dot={{ r: 3, strokeWidth: 0, fill: '#3b82f6' }}
+                dot={{ r, strokeWidth, fill: '#3b82f6' }}
               />
             </LineChart>
           </ResponsiveContainer>

@@ -13,17 +13,17 @@ const ACTIVITY_PRESETS = [
   { type: "Cardio Dance / Zumba", met: 6.5, calPerMin: 8.5 },
 ];
 
-export const ExerciseLogger: React.FC = () => {
+export const ExerciseLogger = () => {
   const { logExercise, user } = useApp();
   const [activity, setActivity] = useState('');
   const [duration, setDuration] = useState('30');
   const [calories, setCalories] = useState('200');
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState(null);
   const [showRunTracker, setShowRunTracker] = useState(false);
 
   // Recalculate estimated burn dynamically when preset is picked
-  const handlePresetSelect = (preset: typeof ACTIVITY_PRESETS[0]) => {
+  const handlePresetSelect = (preset) => {
     setActivity(preset.type);
     const dur = Number(duration) || 30;
 
@@ -34,7 +34,7 @@ export const ExerciseLogger: React.FC = () => {
     setCalories(String(estimatedBurn));
   };
 
-  const handleDurationChange = (val: string) => {
+  const handleDurationChange = (val) => {
     setDuration(val);
     const durNum = Number(val) || 0;
 
@@ -47,13 +47,13 @@ export const ExerciseLogger: React.FC = () => {
     }
   };
 
-  const handleLogSubmit = async (e: React.FormEvent) => {
+  const handleLogSubmit = async (e) => {
     e.preventDefault();
     if (!activity || !duration || !calories) return;
 
     setLoading(true);
     const payload = {
-      activityType: activity,
+      activityType,
       durationMinutes: Number(duration),
       caloriesBurned: Number(calories),
       loggedAt: new Date().toISOString()

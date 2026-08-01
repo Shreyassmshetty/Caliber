@@ -3,15 +3,15 @@ import { useApp } from '../context/AppContext';
 import { Apple, Eye, EyeOff, Dumbbell, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export const Auth: React.FC = () => {
+export const Auth = () => {
   const { signup, login, googleLogin, loading, error } = useApp();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError(null);
 
@@ -42,7 +42,7 @@ export const Auth: React.FC = () => {
       <div className="text-center mb-8">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
+          animate={{ scale, opacity: 1 }}
           transition={{ duration: 0.5 }}
           className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-brand-bg shadow-lg mb-4"
         >
@@ -57,8 +57,8 @@ export const Auth: React.FC = () => {
       </div>
 
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        initial={{ y, opacity: 0 }}
+        animate={{ y, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.4 }}
         className="bg-white p-8 rounded-3xl shadow-md border border-gray-100"
       >

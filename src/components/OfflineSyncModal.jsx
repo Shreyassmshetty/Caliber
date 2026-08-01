@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { WifiOff, CloudUpload, RefreshCw, X, CheckCircle2, Trash2, Smartphone, ShieldCheck, Database } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
-export const OfflineSyncModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+export const OfflineSyncModal = ({ isOpen, onClose }) => {
   const {
     isOnline,
     effectiveOnline,

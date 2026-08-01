@@ -13,10 +13,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import logo from './assets/images/caliber_app_icon_1785420177978.jpg';
 
 
-const AppContent: React.FC = () => {
+const AppContent = () => {
   const { token, user, initialized } = useApp();
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const lastTriggeredMinuteRef = useRef<string | null>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const lastTriggeredMinuteRef = useRef(null);
 
   // Dark Mode effect
   useEffect(() => {
@@ -39,7 +39,7 @@ const AppContent: React.FC = () => {
       // Prevent multiple triggers in the same minute
       if (lastTriggeredMinuteRef.current === currentMinute) return;
 
-      const activeReminders = user.profile!.reminders!.filter(r => r.enabled && r.time === currentMinute);
+      const activeReminders = (user.profile?.reminders || []).filter(r => r.enabled && r.time === currentMinute);
       
       if (activeReminders.length > 0) {
         activeReminders.forEach(reminder => {

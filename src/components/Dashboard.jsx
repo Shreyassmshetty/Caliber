@@ -3,7 +3,7 @@ import { useApp, getLocalDateString } from '../context/AppContext';
 import { ChevronLeft, ChevronRight, Droplet, Dumbbell, Flame, Plus, Trash2, Calendar, Coffee, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ setActiveTab }) => {
+export const Dashboard = ({ setActiveTab }) => {
   const {
     user,
     selectedDate,
@@ -42,7 +42,7 @@ export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ s
   const targetFatGrams = Math.round((calorieTarget * (fatPct / 100)) / 9);
 
   // Shift date handler
-  const shiftDate = (days: number) => {
+  const shiftDate = (days) => {
     const current = new Date(selectedDate);
     current.setDate(current.getDate() + days);
     const newDateStr = getLocalDateString(current);
@@ -51,7 +51,7 @@ export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ s
 
   // Water logs
   const glasses = waterLog?.glasses || 0;
-  const handleWaterUpdate = (change: number) => {
+  const handleWaterUpdate = (change) => {
     const newCount = Math.max(0, glasses + change);
     updateWater(newCount);
   };
@@ -63,7 +63,7 @@ export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ s
   const strokeDashoffset = circumference - (foodPercentage / 100) * circumference;
 
   // Meal lists helper
-  const renderMealSection = (title: string, category: 'breakfast' | 'lunch' | 'dinner' | 'snacks', icon: string) => {
+  const renderMealSection = (title, category, icon) => {
     const meals = foodEntries.filter(item => item.mealType === category);
     const categoryCalories = meals.reduce((sum, item) => sum + (item.calories * item.quantity), 0);
 

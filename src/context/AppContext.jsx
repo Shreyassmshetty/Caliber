@@ -1,48 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { User, FoodEntry, ExerciseEntry, CustomMeal, WaterLog, UserProfile, PendingSyncItem } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-interface AppContextType {
-  user: User | null;
-  token: string | null;
-  selectedDate: string; // YYYY-MM-DD
-  foodEntries: FoodEntry[];
-  exercises: ExerciseEntry[];
-  waterLog: WaterLog | null;
-  customMeals: CustomMeal[];
-  loading: boolean;
-  authLoading: boolean;
-  initialized: boolean;
-  error: string | null;
-  // Offline & Sync states
-  isOnline: boolean;
-  effectiveOnline: boolean;
-  simulatedOffline: boolean;
-  toggleSimulatedOffline: () => void;
-  pendingQueue: PendingSyncItem[];
-  isSyncing: boolean;
-  lastSyncTime: string | null;
-  syncPendingQueue: () => Promise<void>;
-  clearPendingQueue: () => void;
-  removePendingItem: (id: string) => void;
-
-  signup: (email: string, password: string) => Promise<boolean>;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  googleLogin: () => Promise<void>;
-  updateProfile: (profile: Partial<UserProfile> & { customCalorieTarget?: number }) => Promise<boolean>;
-  setSelectedDate: (date: string) => void;
-  fetchDayData: (dateStr: string) => Promise<void>;
-  logFood: (food: Omit<FoodEntry, 'id' | 'userId'>) => Promise<boolean>;
-  deleteFoodLog: (id: string) => Promise<boolean>;
-  logExercise: (exercise: Omit<ExerciseEntry, 'id' | 'userId'>) => Promise<boolean>;
-  deleteExerciseLog: (id: string) => Promise<boolean>;
-  updateWater: (glasses: number) => Promise<boolean>;
-  saveCustomMeal: (meal: Omit<CustomMeal, 'id' | 'userId' | 'createdAt'>) => Promise<boolean>;
-  deleteCustomMeal: (id: string) => Promise<boolean>;
-}
-
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
+const AppContext = createContext(undefined);
 
 export const getLocalDateString = (d = new Date()) => {
   const year = d.getFullYear();
@@ -51,9 +9,9 @@ export const getLocalDateString = (d = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => {
+export const AppProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const urlToken = params.get('token');
@@ -77,23 +35,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     return localStorage.getItem('cnt_token');
   });
-  const [selectedDate, setSelectedDateState] = useState<string>(getLocalDateString());
-  const [foodEntries, setFoodEntries] = useState<FoodEntry[]>([]);
-  const [exercises, setExercises] = useState<ExerciseEntry[]>([]);
-  const [waterLog, setWaterLog] = useState<WaterLog | null>(null);
-  const [customMeals, setCustomMeals] = useState<CustomMeal[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDateState] = useState(getLocalDateString());
+  const [foodEntries, setFoodEntries] = useState([]);
+  const [exercises, setExercises] = useState([]);
+  const [waterLog, setWaterLog] = useState(null);
+  const [customMeals, setCustomMeals] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Offline & Sync States
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [simulatedOffline, setSimulatedOffline] = useState<boolean>(() => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [simulatedOffline, setSimulatedOffline] = useState(() => {
     return localStorage.getItem('caliber_sim_offline') === 'true';
   });
   const effectiveOnline = isOnline && !simulatedOffline;
 
-  const [pendingQueue, setPendingQueue] = useState<PendingSyncItem[]>(() => {
+  const [pendingQueue, setPendingQueue] = useState(() => {
     try {
       const saved = localStorage.getItem('caliber_pending_queue');
       return saved ? JSON.parse(saved) : [];
@@ -101,8 +59,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return [];
     }
   });
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(() => {
     return localStorage.getItem('caliber_last_sync');
   });
 
@@ -136,7 +94,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setSimulatedOffline(prev => !prev);
   };
 
-  const removePendingItem = (id: string) => {
+  const removePendingItem = (id) => {
     setPendingQueue(prev => prev.filter(item => item.id !== id));
   };
 
@@ -149,14 +107,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!token || pendingQueue.length === 0 || isSyncing || !effectiveOnline) return;
     setIsSyncing(true);
 
-    const remainingItems: PendingSyncItem[] = [];
+    const remainingItems= [];
 
     for (const item of pendingQueue) {
       try {
         let success = false;
         if (item.type === 'LOG_FOOD') {
           const res = await fetch('/api/food/log', {
-            method: 'POST',
+            method,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -169,14 +127,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             success = true;
           } else {
             const res = await fetch(`/api/food/log/${item.payload.id}`, {
-              method: 'DELETE',
+              method,
               headers: { 'Authorization': `Bearer ${token}` }
             });
             success = res.ok;
           }
         } else if (item.type === 'LOG_EXERCISE') {
           const res = await fetch('/api/exercises', {
-            method: 'POST',
+            method,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -189,14 +147,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             success = true;
           } else {
             const res = await fetch(`/api/exercises/${item.payload.id}`, {
-              method: 'DELETE',
+              method,
               headers: { 'Authorization': `Bearer ${token}` }
             });
             success = res.ok;
           }
         } else if (item.type === 'UPDATE_WATER') {
           const res = await fetch('/api/water', {
-            method: 'POST',
+            method,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -206,7 +164,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           success = res.ok;
         } else if (item.type === 'SAVE_CUSTOM_MEAL') {
           const res = await fetch('/api/custom-meals', {
-            method: 'POST',
+            method,
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -279,7 +237,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [selectedDate, user]);
 
-  const fetchCustomMeals = async (authToken: string) => {
+  const fetchCustomMeals = async (authToken) => {
     if (!effectiveOnline) {
       try {
         const cached = localStorage.getItem('caliber_custom_meals');
@@ -303,7 +261,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const fetchDayData = async (dateStr: string) => {
+  const fetchDayData = async (dateStr) => {
     if (!token) return;
     setLoading(true);
     setError(null);
@@ -365,7 +323,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
 
-  const fetchWithRetry = async (url: string, options?: RequestInit, retries = 3, delay = 1000): Promise<Response> => {
+  const fetchWithRetry = async (url, options = undefined, retries = 3, delay = 1000) => {
     try {
       const res = await fetch(url, options);
       return res;
@@ -378,12 +336,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const signup = async (email: string, password: string): Promise<boolean> => {
+  const signup = async (email, password) => {
     setError(null);
     setLoading(true);
     try {
       const res = await fetchWithRetry('/api/auth/signup', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -406,12 +364,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email, password) => {
     setError(null);
     setLoading(true);
     try {
       const res = await fetchWithRetry('/api/auth/login', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -485,7 +443,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }, 500);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error("Google Login initiation failed", err);
       setError(err?.message || "Network error. Please check your connection and try again.");
       setLoading(false);
@@ -494,7 +452,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Global listener for Google auth messages from the popup callback
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = (event) => {
       // Simple security checks on origin (must be same origin or *.run.app)
       const origin = event.origin;
       if (!origin.endsWith('.run.app') && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
@@ -519,13 +477,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const updateProfile = async (profileData: Partial<UserProfile> & { customCalorieTarget?: number }): Promise<boolean> => {
+  const updateProfile = async (profileData) => {
     if (!token) return false;
     setError(null);
     setLoading(true);
     try {
       const res = await fetch('/api/profile/update', {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -549,17 +507,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const setSelectedDate = (date: string) => {
+  const setSelectedDate = (date) => {
     setSelectedDateState(date);
   };
 
-  const logFood = async (food: Omit<FoodEntry, 'id' | 'userId'>): Promise<boolean> => {
+  const logFood = async (food) => {
     if (!token) return false;
 
     if (!effectiveOnline) {
       const tempId = `offline_food_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const newEntry: FoodEntry = {
-        id: tempId,
+      const newEntry= {
+        id,
         userId: user?.id || 'offline_user',
         ...food
       };
@@ -581,7 +539,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     try {
       const res = await fetch('/api/food/log', {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -600,8 +558,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (err) {
       console.warn("Network error during logFood. Queueing offline item...");
       const tempId = `offline_food_${Date.now()}`;
-      const newEntry: FoodEntry = {
-        id: tempId,
+      const newEntry= {
+        id,
         userId: user?.id || 'offline_user',
         ...food
       };
@@ -620,7 +578,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const deleteFoodLog = async (id: string): Promise<boolean> => {
+  const deleteFoodLog = async (id) => {
     if (!token) return false;
 
     const target = foodEntries.find(e => e.id === id);
@@ -633,17 +591,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setPendingQueue(prev => [...prev, {
           id: `sync_del_${Date.now()}`,
           type: 'DELETE_FOOD',
-          timestamp: new Date().toISOString(),
-          title: `Deleted: ${target?.foodName || 'Food Item'}`,
-          payload: { id }
-        }]);
+        timestamp: new Date().toISOString(),
+        title: `Deleted: ${target?.foodName || 'Food Item'}`,
+        payload: { id }
+      }]);
       }
       return true;
     }
 
     try {
       const res = await fetch(`/api/food/log/${id}`, {
-        method: 'DELETE',
+        method,
         headers: { 'Authorization': `Bearer ${token}` }
       });
       return res.ok;
@@ -659,13 +617,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const logExercise = async (exercise: Omit<ExerciseEntry, 'id' | 'userId'>): Promise<boolean> => {
+  const logExercise = async (exercise) => {
     if (!token) return false;
 
     if (!effectiveOnline) {
       const tempId = `offline_ex_${Date.now()}`;
-      const newEx: ExerciseEntry = {
-        id: tempId,
+      const newEx= {
+        id,
         userId: user?.id || 'offline_user',
         ...exercise
       };
@@ -685,7 +643,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     try {
       const res = await fetch('/api/exercises', {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -703,7 +661,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return false;
     } catch (err) {
       const tempId = `offline_ex_${Date.now()}`;
-      const newEx: ExerciseEntry = { id: tempId, userId: user?.id || 'offline_user', ...exercise };
+      const newEx= { id, userId: user?.id || 'offline_user', ...exercise };
       if (exercise.loggedAt.startsWith(selectedDate)) {
         setExercises(prev => [...prev, newEx]);
       }
@@ -719,7 +677,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const deleteExerciseLog = async (id: string): Promise<boolean> => {
+  const deleteExerciseLog = async (id) => {
     if (!token) return false;
 
     const target = exercises.find(e => e.id === id);
@@ -732,17 +690,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setPendingQueue(prev => [...prev, {
           id: `sync_delex_${Date.now()}`,
           type: 'DELETE_EXERCISE',
-          timestamp: new Date().toISOString(),
-          title: `Deleted workout`,
-          payload: { id }
-        }]);
+        timestamp: new Date().toISOString(),
+        title: `Deleted workout`,
+        payload: { id }
+      }]);
       }
       return true;
     }
 
     try {
       const res = await fetch(`/api/exercises/${id}`, {
-        method: 'DELETE',
+        method,
         headers: { 'Authorization': `Bearer ${token}` }
       });
       return res.ok;
@@ -758,14 +716,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const updateWater = async (glasses: number): Promise<boolean> => {
+  const updateWater = async (glasses) => {
     if (!token) return false;
 
-    const newWaterLog: WaterLog = {
+    const newWaterLog= {
       id: waterLog?.id || `offline_w_${Date.now()}`,
       userId: user?.id || 'offline_user',
       glasses,
-      dateStr: selectedDate,
+      dateStr,
       updatedAt: new Date().toISOString()
     };
 
@@ -776,10 +734,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ...prev.filter(item => !(item.type === 'UPDATE_WATER' && item.payload.dateStr === selectedDate)),
         {
           id: `sync_water_${Date.now()}`,
-          type: 'UPDATE_WATER',
+          type,
           timestamp: new Date().toISOString(),
           title: `Water Intake: ${glasses} glasses`,
-          payload: { dateStr: selectedDate, glasses }
+          payload: { dateStr, glasses }
         }
       ]);
       return true;
@@ -787,12 +745,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     try {
       const res = await fetch('/api/water', {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ dateStr: selectedDate, glasses })
+        body: JSON.stringify({ dateStr, glasses })
       });
 
       if (res.ok) {
@@ -806,21 +764,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ...prev.filter(item => !(item.type === 'UPDATE_WATER' && item.payload.dateStr === selectedDate)),
         {
           id: `sync_water_${Date.now()}`,
-          type: 'UPDATE_WATER',
+          type,
           timestamp: new Date().toISOString(),
           title: `Water Intake: ${glasses} glasses`,
-          payload: { dateStr: selectedDate, glasses }
+          payload: { dateStr, glasses }
         }
       ]);
       return true;
     }
   };
 
-  const saveCustomMeal = async (meal: Omit<CustomMeal, 'id' | 'userId' | 'createdAt'>): Promise<boolean> => {
+  const saveCustomMeal = async (meal) => {
     if (!token) return false;
 
     if (!effectiveOnline) {
-      const newMeal: CustomMeal = {
+      const newMeal= {
         id: `offline_meal_${Date.now()}`,
         userId: user?.id || 'offline_user',
         createdAt: new Date().toISOString(),
@@ -840,7 +798,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     try {
       const res = await fetch('/api/custom-meals', {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -855,7 +813,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       return false;
     } catch (err) {
-      const newMeal: CustomMeal = {
+      const newMeal= {
         id: `offline_meal_${Date.now()}`,
         userId: user?.id || 'offline_user',
         createdAt: new Date().toISOString(),
@@ -874,11 +832,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const deleteCustomMeal = async (id: string): Promise<boolean> => {
+  const deleteCustomMeal = async (id) => {
     if (!token) return false;
     try {
       const res = await fetch(`/api/custom-meals/${id}`, {
-        method: 'DELETE',
+        method,
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

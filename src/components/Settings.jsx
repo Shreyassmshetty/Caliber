@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { LogOut, Eye, EyeOff, Save, Check, RefreshCw, Smartphone, HelpCircle, Bell, Plus, Trash2, WifiOff, CloudUpload, Layers } from 'lucide-react';
-import { Reminder } from '../types';
+
 import { OfflineSyncModal } from './OfflineSyncModal';
 
-export const Settings: React.FC = () => {
+export const Settings = () => {
   const {
     user,
     updateProfile,
@@ -27,18 +27,18 @@ export const Settings: React.FC = () => {
   const [age, setAge] = useState(String(user?.profile?.age || 28));
   const [weight, setWeight] = useState(String(user?.profile?.weight || 75));
   const [height, setHeight] = useState(String(user?.profile?.height || 175));
-  const [sex, setSex] = useState<'male' | 'female'>(user?.profile?.sex || 'male');
+  const [sex, setSex] = useState(user?.profile?.sex || 'male');
   const [activityLevel, setActivityLevel] = useState(user?.profile?.activityLevel || 'moderate');
   const [goal, setGoal] = useState(user?.profile?.goal || 'lose');
 
   const [hideRemaining, setHideRemaining] = useState(user?.profile?.hideCaloriesRemaining || false);
   const [darkMode, setDarkMode] = useState(user?.profile?.darkMode || false);
-  const [reminders, setReminders] = useState<Reminder[]>(user?.profile?.reminders || []);
+  const [reminders, setReminders] = useState(user?.profile?.reminders || []);
   const [syncingWearable, setSyncingWearable] = useState(false);
 
-  const [notification, setNotification] = useState<string | null>(null);
+  const [notification, setNotification] = useState(null);
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
     const success = await updateProfile({
       name: name.trim() || undefined,
@@ -48,7 +48,7 @@ export const Settings: React.FC = () => {
       sex,
       activityLevel,
       goal,
-      hideCaloriesRemaining: hideRemaining,
+      hideCaloriesRemaining,
       reminders,
       darkMode
     });
@@ -59,12 +59,12 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handleToggleHideRemaining = async (val: boolean) => {
+  const handleToggleHideRemaining = async (val) => {
     setHideRemaining(val);
     await updateProfile({ hideCaloriesRemaining: val });
   };
 
-  const handleToggleDarkMode = async (val: boolean) => {
+  const handleToggleDarkMode = async (val) => {
     setDarkMode(val);
     await updateProfile({ darkMode: val });
   };
@@ -73,11 +73,11 @@ export const Settings: React.FC = () => {
     setReminders([...reminders, { id: `rem_${Date.now()}`, time: '12:00', message: 'Time to log your meal!', enabled: true }]);
   };
 
-  const handleUpdateReminder = (id: string, updates: Partial<Reminder>) => {
+  const handleUpdateReminder = (id, updates) => {
     setReminders(reminders.map(r => r.id === id ? { ...r, ...updates } : r));
   };
 
-  const handleRemoveReminder = (id: string) => {
+  const handleRemoveReminder = (id) => {
     setReminders(reminders.filter(r => r.id === id));
   };
 
@@ -147,7 +147,7 @@ export const Settings: React.FC = () => {
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Biological Sex</label>
             <select
               value={sex}
-              onChange={(e) => setSex(e.target.value as any)}
+              onChange={(e) => setSex(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none"
             >
               <option value="male">Male</option>
@@ -191,7 +191,7 @@ export const Settings: React.FC = () => {
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Activity Multiplier</label>
             <select
               value={activityLevel}
-              onChange={(e) => setActivityLevel(e.target.value as any)}
+              onChange={(e) => setActivityLevel(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none"
             >
               <option value="sedentary">Sedentary (1.2x TDEE)</option>
@@ -206,7 +206,7 @@ export const Settings: React.FC = () => {
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Daily Goal</label>
             <select
               value={goal}
-              onChange={(e) => setGoal(e.target.value as any)}
+              onChange={(e) => setGoal(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none"
             >
               <option value="lose">Lose Weight (-500 kcal target deficit)</option>

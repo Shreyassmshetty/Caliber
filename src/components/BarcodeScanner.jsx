@@ -2,27 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Search, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
-interface BarcodeScannerProps {
-  onFoodFound: (food: {
-    foodName: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    servingSize: string;
-  }) => void;
-  onClose: () => void;
-}
-
-export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onClose }) => {
+export const BarcodeScanner = ({ onFoodFound, onClose }) => {
   const [barcode, setBarcode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanError, setScanError] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef(null);
 
   // Lookup barcode on Open Food Facts API
-  const lookupBarcode = async (code: string) => {
+  const lookupBarcode = async (code) => {
     if (!code) return;
     setLoading(true);
     setScanError(null);
@@ -57,7 +45,7 @@ export const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onFoodFound, onC
       } else {
         setScanError("Product not found in Open Food Facts database.");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setScanError("Network error lookup up barcode.");
     } finally {

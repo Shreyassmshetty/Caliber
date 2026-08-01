@@ -3,7 +3,7 @@ import { WifiOff, CloudUpload, RefreshCw, Layers } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OfflineSyncModal } from './OfflineSyncModal';
 
-export const OfflineSyncBanner: React.FC = () => {
+export const OfflineSyncBanner = () => {
   const {
     effectiveOnline,
     simulatedOffline,

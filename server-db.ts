@@ -3,8 +3,8 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { getFirestore } from 'firebase-admin/firestore';
+import { createClient } from '@supabase/supabase-js';
 
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
@@ -14,7 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'calorie-nutrition-tracker-secret-k
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-let dbSupabase: SupabaseClient | null = null;
+let dbSupabase = null;
 
 if (supabaseUrl && supabaseKey) {
   try {
@@ -26,16 +26,16 @@ if (supabaseUrl && supabaseKey) {
 }
 
 // Initialize Firestore safely with a fallback flag
-let dbFirestore: Firestore | null = null;
+let dbFirestore = null;
 
-export function handleFirestoreError(err: any, context?: string) {
-  const errMsg = err?.message || String(err);
+export function handleFirestoreError(err, context) {
+  const errMsg = err.message || String(err);
   const isApiDisabledOrPermDenied = 
     errMsg.includes('PERMISSION_DENIED') || 
     errMsg.includes('Cloud Firestore API has not been used') || 
     errMsg.includes('disabled') || 
     errMsg.includes('has not been used') ||
-    errMsg.includes('code: 7') ||
+    errMsg.includes('code = 7') ||
     errMsg.includes('code 7');
 
   if (isApiDisabledOrPermDenied && dbFirestore !== null) {
@@ -90,119 +90,26 @@ export const LOCAL_FOODS = [
   { foodName: "Chicken Breast (grilled)", calories: 165, protein: 31, carbs: 0, fat: 3.6, servingSize: "100g" },
   { foodName: "Egg (large boiled)", calories: 78, protein: 6.3, carbs: 0.6, fat: 5.3, servingSize: "1 large (50g)" },
   { foodName: "White Rice (cooked)", calories: 205, protein: 4.2, carbs: 44.5, fat: 0.4, servingSize: "1 cup (158g)" },
-  { foodName: "Brown Rice (cooked)", calories: 216, protein: 5.0, carbs: 44.8, fat: 1.8, servingSize: "1 cup (195g)" },
+  { foodName: "Brown Rice (cooked)", calories: 215, protein: 5.0, carbs: 44.8, fat: 1.8, servingSize: "1 cup (195g)" },
   { foodName: "Milk (2% fat)", calories: 122, protein: 8.1, carbs: 11.7, fat: 4.8, servingSize: "1 cup (244g)" },
   { foodName: "Salmon Fillet (baked)", calories: 206, protein: 22.0, carbs: 0, fat: 12.4, servingSize: "100g" },
   { foodName: "Avocado (medium)", calories: 240, protein: 3.0, carbs: 12.0, fat: 22.0, servingSize: "1 medium (150g)" },
   { foodName: "Oatmeal (cooked)", calories: 166, protein: 5.9, carbs: 28.1, fat: 3.6, servingSize: "1 cup (234g)" },
   { foodName: "Peanut Butter (creamy)", calories: 94, protein: 4.0, carbs: 3.1, fat: 8.1, servingSize: "1 tbsp (16g)" },
-  { foodName: "Whole Wheat Bread", calories: 81, protein: 4.0, carbs: 13.8, fat: 1.1, servingSize: "1 slice (28g)" },
-  { foodName: "Greek Yogurt (plain, non-fat)", calories: 90, protein: 15.5, carbs: 5.4, fat: 0.4, servingSize: "1 container (150g)" },
+  { foodName: "Whole Wheat Bread", calories: 69, protein: 3.6, carbs: 11.8, fat: 0.9, servingSize: "1 slice (28g)" },
+  { foodName: "Greek Yogurt (plain, non-fat)", calories: 80, protein: 15.5, carbs: 6.4, fat: 0.4, servingSize: "1 container (150g)" },
   { foodName: "Broccoli (steamed)", calories: 54, protein: 3.7, carbs: 10.0, fat: 0.6, servingSize: "1 cup (150g)" },
-  { foodName: "Sweet Potato (baked)", calories: 112, protein: 2.0, carbs: 26.0, fat: 0.2, servingSize: "1 medium (114g)" },
+  { foodName: "Sweet Potato (baked)", calories: 103, protein: 2.0, carbs: 24.0, fat: 0.2, servingSize: "1 medium (114g)" },
   { foodName: "Olive Oil", calories: 119, protein: 0, carbs: 0, fat: 13.5, servingSize: "1 tbsp (13.5g)" },
-  { foodName: "Ground Beef (lean 90/10)", calories: 200, protein: 26.0, carbs: 0, fat: 10.0, servingSize: "100g" },
+  { foodName: "Ground Beef (lean 90/10)", calories: 200, protein: 20.0, carbs: 0, fat: 10.0, servingSize: "100g" },
   { foodName: "Tuna (canned in water)", calories: 116, protein: 26.0, carbs: 0, fat: 1.0, servingSize: "100g" },
-  { foodName: "Pasta (cooked spaghetti)", calories: 220, protein: 8.1, carbs: 43.0, fat: 1.3, servingSize: "1 cup (140g)" },
+  { foodName: "Pasta (cooked spaghetti)", calories: 200, protein: 7.1, carbs: 40.0, fat: 1.3, servingSize: "1 cup (140g)" },
   { foodName: "Almonds (raw)", calories: 164, protein: 6.0, carbs: 6.1, fat: 14.1, servingSize: "28g (23 nuts)" },
   { foodName: "Protein Powder (Whey)", calories: 120, protein: 24.0, carbs: 3.0, fat: 1.5, servingSize: "1 scoop (30g)" },
   { foodName: "Orange (medium)", calories: 62, protein: 1.2, carbs: 15.4, fat: 0.2, servingSize: "1 medium (131g)" },
-  { foodName: "Blueberries (raw)", calories: 85, protein: 1.1, carbs: 21.0, fat: 0.5, servingSize: "1 cup (148g)" },
-  { foodName: "Spinach (raw)", calories: 7, protein: 0.9, carbs: 1.1, fat: 0.1, servingSize: "1 cup (30g)" },
+  { foodName: "Blueberries (raw)", calories: 84, protein: 1.1, carbs: 21.0, fat: 0.5, servingSize: "1 cup (148g)" },
+  { foodName: "Spinach (raw)", calories: 7, protein: 0.9, carbs: 1.1, fat: 0.1, servingSize: "1 cup (30g)" }
 ];
-
-export interface Reminder {
-  id: string;
-  time: string;
-  message: string;
-  enabled: boolean;
-}
-
-export interface UserProfile {
-  name?: string;
-  age?: number;
-  weight?: number;
-  height?: number;
-  sex?: 'male' | 'female';
-  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
-  goal?: 'lose' | 'maintain' | 'gain';
-  dailyCalorieTarget?: number;
-  macroProteinPercentage?: number;
-  macroCarbsPercentage?: number;
-  macroFatPercentage?: number;
-  onboarded?: boolean;
-  hideCaloriesRemaining?: boolean;
-  reminders?: Reminder[];
-  darkMode?: boolean;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  passwordHash: string;
-  profile: UserProfile;
-}
-
-export interface FoodEntry {
-  id: string;
-  userId: string;
-  foodName: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  servingSize: string;
-  quantity: number;
-  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snacks';
-  loggedAt: string; // ISO String
-}
-
-export interface ExerciseEntry {
-  id: string;
-  userId: string;
-  activityType: string;
-  durationMinutes: number;
-  caloriesBurned: number;
-  loggedAt: string; // ISO String
-}
-
-export interface CustomMealIngredient {
-  foodName: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  quantity: number;
-  servingSize: string;
-}
-
-export interface CustomMeal {
-  id: string;
-  userId: string;
-  mealName: string;
-  ingredients: CustomMealIngredient[];
-  totalCalories: number;
-  totalProtein: number;
-  totalCarbs: number;
-  totalFat: number;
-  createdAt: string; // ISO String
-}
-
-export interface WaterLog {
-  id: string;
-  userId: string;
-  glasses: number;
-  dateStr: string; // YYYY-MM-DD
-  updatedAt: string; // ISO String
-}
-
-export interface DatabaseSchema {
-  users: User[];
-  foodEntries: FoodEntry[];
-  exercises: ExerciseEntry[];
-  customMeals: CustomMeal[];
-  waterLogs: WaterLog[];
-}
 
 // Ensure database file exists
 export function initDb() {
@@ -211,7 +118,7 @@ export function initDb() {
   }
 
   if (!fs.existsSync(DB_FILE)) {
-    const defaultData: DatabaseSchema = {
+    const defaultData = {
       users: [],
       foodEntries: [],
       exercises: [],
@@ -223,7 +130,7 @@ export function initDb() {
 }
 
 // Read database
-export function readDb(): DatabaseSchema {
+export function readDb() {
   initDb();
   try {
     const content = fs.readFileSync(DB_FILE, 'utf-8');
@@ -235,7 +142,7 @@ export function readDb(): DatabaseSchema {
 }
 
 // Write database
-export function writeDb(data: DatabaseSchema) {
+export function writeDb(data) {
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
   } catch (error) {
@@ -243,15 +150,14 @@ export function writeDb(data: DatabaseSchema) {
   }
 }
 
-// Helper: Generate JWT token
-export function generateToken(userId: string): string {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '10y' });
+// Token Helper functions
+export function generateToken(userId) {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
 }
 
-// Helper: Verify JWT token
-export function verifyToken(token: string): { userId: string } | null {
+export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string };
+    return jwt.verify(token, JWT_SECRET);
   } catch (err) {
     return null;
   }
@@ -260,7 +166,7 @@ export function verifyToken(token: string): { userId: string } | null {
 // ==================== DATABASE ADAPTERS (SUPABASE -> FIRESTORE -> LOCAL DB) ====================
 
 // 1. Get user by ID
-export async function getUserById(id: string): Promise<User | null> {
+export async function getUserById(id) {
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('users').select('*').eq('id', id).maybeSingle();
@@ -270,7 +176,7 @@ export async function getUserById(id: string): Promise<User | null> {
           email: data.email,
           passwordHash: data.password_hash || data.passwordHash,
           profile: data.profile || {}
-        } as User;
+        };
       }
     } catch (err) {
       console.warn("[Supabase Warning] getUserById error:", err);
@@ -283,10 +189,10 @@ export async function getUserById(id: string): Promise<User | null> {
         const data = doc.data();
         return {
           id: doc.id,
-          email: data?.email,
-          passwordHash: data?.passwordHash,
-          profile: data?.profile || {}
-        } as User;
+          email: data.email,
+          passwordHash: data.passwordHash,
+          profile: data.profile || {}
+        };
       }
     } catch (err) {
       handleFirestoreError(err, "getUserById");
@@ -297,7 +203,7 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 // 2. Get user by email
-export async function getUserByEmail(email: string): Promise<User | null> {
+export async function getUserByEmail(email) {
   const normEmail = email.toLowerCase().trim();
   if (dbSupabase) {
     try {
@@ -308,7 +214,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
           email: data.email,
           passwordHash: data.password_hash || data.passwordHash,
           profile: data.profile || {}
-        } as User;
+        };
       }
     } catch (err) {
       console.warn("[Supabase Warning] getUserByEmail error:", err);
@@ -325,7 +231,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
           email: data.email,
           passwordHash: data.passwordHash,
           profile: data.profile || {}
-        } as User;
+        };
       }
     } catch (err) {
       handleFirestoreError(err, "getUserByEmail");
@@ -336,7 +242,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 }
 
 // 3. Create user
-export async function createUser(user: User): Promise<void> {
+export async function createUser(user) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('users').insert({
@@ -373,7 +279,7 @@ export async function createUser(user: User): Promise<void> {
 }
 
 // 4. Update user profile
-export async function updateUserProfile(userId: string, profile: UserProfile): Promise<void> {
+export async function updateUserProfile(userId, profile) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('users').update({ profile }).eq('id', userId);
@@ -404,12 +310,12 @@ export async function updateUserProfile(userId: string, profile: UserProfile): P
 }
 
 // 5. Get food entries
-export async function getFoodEntries(userId: string, dateStr?: string): Promise<FoodEntry[]> {
+export async function getFoodEntries(userId, dateStr) {
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('food_entries').select('*').eq('user_id', userId);
       if (!error && data) {
-        let entries = data.map((d: any) => ({
+        let entries = data.map((d) => ({
           id: d.id,
           userId: d.user_id || d.userId,
           foodName: d.food_name || d.foodName,
@@ -421,7 +327,7 @@ export async function getFoodEntries(userId: string, dateStr?: string): Promise<
           quantity: Number(d.quantity || 1),
           mealType: d.meal_type || d.mealType,
           loggedAt: d.logged_at || d.loggedAt
-        } as FoodEntry));
+        }));
         if (dateStr) {
           entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
         }
@@ -434,7 +340,7 @@ export async function getFoodEntries(userId: string, dateStr?: string): Promise<
   if (dbFirestore) {
     try {
       const snap = await dbFirestore.collection('users').doc(userId).collection('foodEntries').get();
-      let entries = snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() } as FoodEntry));
+      let entries = snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() }));
       if (dateStr) {
         entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
       }
@@ -452,7 +358,7 @@ export async function getFoodEntries(userId: string, dateStr?: string): Promise<
 }
 
 // 6. Log food entry
-export async function logFoodEntry(entry: FoodEntry): Promise<void> {
+export async function logFoodEntry(entry) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('food_entries').insert({
@@ -503,7 +409,7 @@ export async function logFoodEntry(entry: FoodEntry): Promise<void> {
 }
 
 // 7. Delete food entry
-export async function deleteFoodEntry(userId: string, id: string): Promise<boolean> {
+export async function deleteFoodEntry(userId, id) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('food_entries').delete().eq('id', id).eq('user_id', userId);
@@ -535,19 +441,19 @@ export async function deleteFoodEntry(userId: string, id: string): Promise<boole
 }
 
 // 8. Get exercises
-export async function getExercises(userId: string, dateStr?: string): Promise<ExerciseEntry[]> {
+export async function getExercises(userId, dateStr) {
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('exercises').select('*').eq('user_id', userId);
       if (!error && data) {
-        let entries = data.map((d: any) => ({
+        let entries = data.map((d) => ({
           id: d.id,
           userId: d.user_id || d.userId,
           activityType: d.activity_type || d.activityType,
           durationMinutes: Number(d.duration_minutes || d.durationMinutes || 0),
           caloriesBurned: Number(d.calories_burned || d.caloriesBurned || 0),
           loggedAt: d.logged_at || d.loggedAt
-        } as ExerciseEntry));
+        }));
         if (dateStr) {
           entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
         }
@@ -560,7 +466,7 @@ export async function getExercises(userId: string, dateStr?: string): Promise<Ex
   if (dbFirestore) {
     try {
       const snap = await dbFirestore.collection('users').doc(userId).collection('exercises').get();
-      let entries = snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() } as ExerciseEntry));
+      let entries = snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() }));
       if (dateStr) {
         entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
       }
@@ -578,7 +484,7 @@ export async function getExercises(userId: string, dateStr?: string): Promise<Ex
 }
 
 // 9. Log exercise
-export async function logExercise(entry: ExerciseEntry): Promise<void> {
+export async function logExercise(entry) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('exercises').insert({
@@ -619,7 +525,7 @@ export async function logExercise(entry: ExerciseEntry): Promise<void> {
 }
 
 // 10. Delete exercise
-export async function deleteExercise(userId: string, id: string): Promise<boolean> {
+export async function deleteExercise(userId, id) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('exercises').delete().eq('id', id).eq('user_id', userId);
@@ -651,12 +557,12 @@ export async function deleteExercise(userId: string, id: string): Promise<boolea
 }
 
 // 11. Get custom meals
-export async function getCustomMeals(userId: string): Promise<CustomMeal[]> {
+export async function getCustomMeals(userId) {
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('custom_meals').select('*').eq('user_id', userId);
       if (!error && data) {
-        return data.map((d: any) => ({
+        return data.map((d) => ({
           id: d.id,
           userId: d.user_id || d.userId,
           mealName: d.meal_name || d.mealName,
@@ -666,7 +572,7 @@ export async function getCustomMeals(userId: string): Promise<CustomMeal[]> {
           totalCarbs: Number(d.total_carbs || d.totalCarbs || 0),
           totalFat: Number(d.total_fat || d.totalFat || 0),
           createdAt: d.created_at || d.createdAt
-        } as CustomMeal));
+        }));
       }
     } catch (err) {
       console.warn("[Supabase Warning] getCustomMeals error:", err);
@@ -675,7 +581,7 @@ export async function getCustomMeals(userId: string): Promise<CustomMeal[]> {
   if (dbFirestore) {
     try {
       const snap = await dbFirestore.collection('users').doc(userId).collection('customMeals').get();
-      return snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() } as CustomMeal));
+      return snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() }));
     } catch (err) {
       handleFirestoreError(err, "getCustomMeals");
     }
@@ -685,7 +591,7 @@ export async function getCustomMeals(userId: string): Promise<CustomMeal[]> {
 }
 
 // 12. Create custom meal
-export async function createCustomMeal(meal: CustomMeal): Promise<void> {
+export async function createCustomMeal(meal) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('custom_meals').insert({
@@ -732,7 +638,7 @@ export async function createCustomMeal(meal: CustomMeal): Promise<void> {
 }
 
 // 13. Delete custom meal
-export async function deleteCustomMeal(userId: string, id: string): Promise<boolean> {
+export async function deleteCustomMeal(userId, id) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('custom_meals').delete().eq('id', id).eq('user_id', userId);
@@ -764,7 +670,7 @@ export async function deleteCustomMeal(userId: string, id: string): Promise<bool
 }
 
 // 14. Get water log
-export async function getWaterLog(userId: string, dateStr: string): Promise<WaterLog | null> {
+export async function getWaterLog(userId, dateStr) {
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('water_logs').select('*').eq('user_id', userId).eq('date_str', dateStr).maybeSingle();
@@ -775,7 +681,7 @@ export async function getWaterLog(userId: string, dateStr: string): Promise<Wate
           dateStr: data.date_str || data.dateStr,
           glasses: Number(data.glasses || 0),
           updatedAt: data.updated_at || data.updatedAt
-        } as WaterLog;
+        };
       }
     } catch (err) {
       console.warn("[Supabase Warning] getWaterLog error:", err);
@@ -785,7 +691,7 @@ export async function getWaterLog(userId: string, dateStr: string): Promise<Wate
     try {
       const doc = await dbFirestore.collection('users').doc(userId).collection('waterIntake').doc(dateStr).get();
       if (doc.exists) {
-        return { id: doc.id, userId, dateStr, ...doc.data() } as WaterLog;
+        return { id: doc.id, userId, dateStr, ...doc.data() };
       }
     } catch (err) {
       handleFirestoreError(err, "getWaterLog");
@@ -796,7 +702,7 @@ export async function getWaterLog(userId: string, dateStr: string): Promise<Wate
 }
 
 // 15. Update water log
-export async function updateWaterLog(userId: string, dateStr: string, glasses: number): Promise<WaterLog> {
+export async function updateWaterLog(userId, dateStr, glasses) {
   const finalGlasses = Math.max(0, Number(glasses));
   if (dbSupabase) {
     try {
@@ -815,7 +721,7 @@ export async function updateWaterLog(userId: string, dateStr: string, glasses: n
           userId,
           dateStr,
           glasses: finalGlasses,
-          updatedAt: logData.updated_at
+          updatedAt: data?.updated_at || logData.updated_at
         };
       }
       console.warn("[Supabase Warning] updateWaterLog returned error:", error);
@@ -832,7 +738,7 @@ export async function updateWaterLog(userId: string, dateStr: string, glasses: n
       };
       await ref.set(data, { merge: true });
       console.log(`Water log updated in Firestore for user ${userId} date ${dateStr}`);
-      return { id: dateStr, userId, dateStr, ...data } as WaterLog;
+      return { id: dateStr, userId, dateStr, ...data };
     } catch (err) {
       handleFirestoreError(err, "updateWaterLog");
     }
@@ -840,7 +746,7 @@ export async function updateWaterLog(userId: string, dateStr: string, glasses: n
   const db = readDb();
   let logIdx = db.waterLogs.findIndex(w => w.userId === userId && w.dateStr === dateStr);
   if (logIdx === -1) {
-    const newLog: WaterLog = {
+    const newLog = {
       id: `w_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId,
       glasses: finalGlasses,
@@ -857,5 +763,3 @@ export async function updateWaterLog(userId: string, dateStr: string, glasses: n
     return db.waterLogs[logIdx];
   }
 }
-
-

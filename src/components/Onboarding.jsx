@@ -3,10 +3,10 @@ import { useApp } from '../context/AppContext';
 import { ChevronRight, ChevronLeft, Calculator, Target, Sparkles, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-export const Onboarding: React.FC = () => {
+export const Onboarding = () => {
   const { updateProfile, loading, error } = useApp();
   const [step, setStep] = useState(1);
-  const [unitSystem, setUnitSystem] = useState<'metric' | 'imperial'>('metric');
+  const [unitSystem, setUnitSystem] = useState('metric');
 
   // Metric fields
   const [name, setName] = useState('');
@@ -19,11 +19,11 @@ export const Onboarding: React.FC = () => {
   const [heightFt, setHeightFt] = useState('5');
   const [heightIn, setHeightIn] = useState('9');
 
-  const [sex, setSex] = useState<'male' | 'female'>('male');
-  const [activityLevel, setActivityLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'>('moderate');
-  const [goal, setGoal] = useState<'lose' | 'maintain' | 'gain'>('lose');
+  const [sex, setSex] = useState('male');
+  const [activityLevel, setActivityLevel] = useState('moderate');
+  const [goal, setGoal] = useState('lose');
 
-  const [customCalorieTarget, setCustomCalorieTarget] = useState<string>('');
+  const [customCalorieTarget, setCustomCalorieTarget] = useState('');
 
   // Get finalized metric values for Mifflin-St Jeor
   const getFinalMetrics = () => {
@@ -106,17 +106,17 @@ export const Onboarding: React.FC = () => {
       fat = 25;
     }
 
-    const payload: any = {
+    const payload= {
       name: name.trim() || undefined,
-      age: finalAge,
+      age,
       weight,
       height,
       sex,
       activityLevel,
       goal,
-      macroProteinPercentage: protein,
-      macroCarbsPercentage: carbs,
-      macroFatPercentage: fat,
+      macroProteinPercentage,
+      macroCarbsPercentage,
+      macroFatPercentage,
     };
 
     if (customCalorieTarget) {
@@ -158,9 +158,9 @@ export const Onboarding: React.FC = () => {
           {step === 1 && (
             <motion.div
               key="step1"
-              initial={{ x: 30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
+              initial={{ x, opacity: 0 }}
+              animate={{ x, opacity: 1 }}
+              exit={{ x, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
@@ -303,9 +303,9 @@ export const Onboarding: React.FC = () => {
           {step === 2 && (
             <motion.div
               key="step2"
-              initial={{ x: 30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
+              initial={{ x, opacity: 0 }}
+              animate={{ x, opacity: 1 }}
+              exit={{ x, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
@@ -317,13 +317,13 @@ export const Onboarding: React.FC = () => {
                   { id: 'sedentary', label: 'Sedentary', desc: 'Little or no exercise, desk job' },
                   { id: 'light', label: 'Lightly Active', desc: 'Light exercise or active hobbies 1-3 days/wk' },
                   { id: 'moderate', label: 'Moderately Active', desc: 'Moderate workouts or sports 3-5 days/wk' },
-                  { id: 'active', label: 'Active', desc: 'Hard training or physical labor 6-7 days/wk' },
-                  { id: 'very_active', label: 'Very Active', desc: 'Professional athlete or two intense workouts daily' },
+                  { id: 'active', label: 'Very Active', desc: 'Hard training or physical labor 6-7 days/wk' },
+                  { id: 'very_active', label: 'Extra Active', desc: 'Very heavy physical work or professional training' },
                 ].map((act) => (
                   <button
                     key={act.id}
                     type="button"
-                    onClick={() => setActivityLevel(act.id as any)}
+                    onClick={() => setActivityLevel(act.id)}
                     className={`w-full text-left p-3.5 rounded-2xl border text-sm transition ${
                       activityLevel === act.id
                         ? 'border-primary bg-primary/5 text-primary'
@@ -341,9 +341,9 @@ export const Onboarding: React.FC = () => {
           {step === 3 && (
             <motion.div
               key="step3"
-              initial={{ x: 30, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -30, opacity: 0 }}
+              initial={{ x, opacity: 0 }}
+              animate={{ x, opacity: 1 }}
+              exit={{ x, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
@@ -352,14 +352,14 @@ export const Onboarding: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'lose', label: 'Lose', desc: '-500 kcal' },
-                  { id: 'maintain', label: 'Maintain', desc: 'TDEE Balanced' },
-                  { id: 'gain', label: 'Gain', desc: '+500 kcal' }
+                  { id: 'lose', label: 'Lose Weight', desc: '-500 kcal' },
+                  { id: 'maintain', label: 'Maintain', desc: '0 kcal' },
+                  { id: 'gain', label: 'Gain Muscle', desc: '+500 kcal' }
                 ].map((g) => (
                   <button
                     key={g.id}
                     type="button"
-                    onClick={() => setGoal(g.id as any)}
+                    onClick={() => setGoal(g.id)}
                     className={`p-3.5 rounded-2xl border text-center transition flex flex-col justify-between h-24 ${
                       goal === g.id
                         ? 'border-primary bg-primary/5 text-primary'

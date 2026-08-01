@@ -2,31 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Sparkles, X, RefreshCw, AlertCircle, Volume2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
-interface VoiceFoodInputProps {
-  onFoodFound: (food: {
-    foodName: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    servingSize: string;
-  }) => void;
-  onClose: () => void;
-}
-
-export const VoiceFoodInput: React.FC<VoiceFoodInputProps> = ({ onFoodFound, onClose }) => {
+export const VoiceFoodInput = ({ onFoodFound, onClose }) => {
   const { token } = useApp();
   const [transcript, setTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     // Check Web Speech API availability
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (window).SpeechRecognition || (window).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
       setIsSupported(false);
@@ -39,7 +27,7 @@ export const VoiceFoodInput: React.FC<VoiceFoodInputProps> = ({ onFoodFound, onC
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event) => {
         let currentTranscript = '';
         for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
@@ -47,8 +35,8 @@ export const VoiceFoodInput: React.FC<VoiceFoodInputProps> = ({ onFoodFound, onC
         setTranscript(currentTranscript);
       };
 
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
         if (event.error === 'not-allowed') {
           setError('Microphone access denied. Please allow microphone access or type your meal below.');
         } else if (event.error !== 'no-speech') {
@@ -63,7 +51,7 @@ export const VoiceFoodInput: React.FC<VoiceFoodInputProps> = ({ onFoodFound, onC
 
       recognitionRef.current = recognition;
     } catch (e) {
-      console.error('Speech recognition initialization error:', e);
+      console.error('Speech recognition initialization error', e);
       setIsSupported(false);
     }
 
@@ -98,7 +86,7 @@ export const VoiceFoodInput: React.FC<VoiceFoodInputProps> = ({ onFoodFound, onC
         recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
-        console.error('Start recognition error:', err);
+        console.error('Start recognition error', err);
         // Might be already running
         try {
           recognitionRef.current.stop();
@@ -121,7 +109,7 @@ export const VoiceFoodInput: React.FC<VoiceFoodInputProps> = ({ onFoodFound, onC
 
     try {
       const res = await fetch('/api/ai/parse-voice', {
-        method: 'POST',
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -144,7 +132,7 @@ export const VoiceFoodInput: React.FC<VoiceFoodInputProps> = ({ onFoodFound, onC
         fat: Number(data.fat || 10),
         servingSize: data.servingSize || '1 portion'
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setError(err.message || 'Error processing meal with AI. Please check network and try again.');
     } finally {

@@ -2,29 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Play, Pause, Square, MapPin, Navigation, Activity, Clock, Flame, AlertCircle, X, Check, Footprints } from 'lucide-react';
 
-interface Position {
-  lat: number;
-  lng: number;
-  timestamp: number;
-}
 
-export const LiveRunTracker: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+
+export const LiveRunTracker = ({ onClose }) => {
   const { logExercise, user } = useApp();
   
   const [isTracking, setIsTracking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [positions, setPositions] = useState([]);
   const [distanceKm, setDistanceKm] = useState(0); 
   const [durationMs, setDurationMs] = useState(0); 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   
-  const watchIdRef = useRef<number | null>(null);
-  const timerRef = useRef<any>(null);
+  const watchIdRef = useRef(null);
+  const timerRef = useRef(null);
   
-  const calcDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const calcDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -58,7 +54,7 @@ export const LiveRunTracker: React.FC<{ onClose: () => void }> = ({ onClose }) =
       (err) => {
         setError("Location access denied or unavailable. " + err.message);
       },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
     );
   };
 
@@ -107,8 +103,8 @@ export const LiveRunTracker: React.FC<{ onClose: () => void }> = ({ onClose }) =
     };
   }, []);
 
-  // Format time (MM:SS)
-  const formatTime = (ms: number) => {
+  // Format time (MM)
+  const formatTime = (ms) => {
     const totalSeconds = Math.floor(ms / 1000);
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const s = (totalSeconds % 60).toString().padStart(2, '0');
@@ -123,7 +119,7 @@ export const LiveRunTracker: React.FC<{ onClose: () => void }> = ({ onClose }) =
   const estimatedSteps = Math.round((distanceKm * 1000) / 0.75);
 
   const currentPace = distanceKm > 0 ? (durationMs / 1000 / 60) / distanceKm : 0; // min/km
-  const formatPace = (pace: number) => {
+  const formatPace = (pace) => {
     if (!pace || !isFinite(pace)) return "--:--";
     const m = Math.floor(pace);
     const s = Math.round((pace - m) * 60).toString().padStart(2, '0');
@@ -135,8 +131,8 @@ export const LiveRunTracker: React.FC<{ onClose: () => void }> = ({ onClose }) =
     const durationMins = Math.max(1, Math.round(durationMs / 1000 / 60));
     await logExercise({
       activityType: `Run/Walk (${distanceKm.toFixed(2)} km, ${estimatedSteps} steps)`,
-      durationMinutes: durationMins,
-      caloriesBurned: estimatedCals,
+      durationMinutes,
+      caloriesBurned,
       loggedAt: new Date().toISOString()
     });
     setSaving(false);
