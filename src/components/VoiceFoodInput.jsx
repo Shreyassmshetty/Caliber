@@ -109,7 +109,7 @@ export const VoiceFoodInput = ({ onFoodFound, onClose }) => {
 
     try {
       const res = await fetch('/api/ai/parse-voice', {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

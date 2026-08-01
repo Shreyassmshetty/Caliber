@@ -158,9 +158,9 @@ export const Onboarding = () => {
           {step === 1 && (
             <motion.div
               key="step1"
-              initial={{ x, opacity: 0 }}
-              animate={{ x, opacity: 1 }}
-              exit={{ x, opacity: 0 }}
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -20, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
@@ -303,9 +303,9 @@ export const Onboarding = () => {
           {step === 2 && (
             <motion.div
               key="step2"
-              initial={{ x, opacity: 0 }}
-              animate={{ x, opacity: 1 }}
-              exit={{ x, opacity: 0 }}
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -20, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >
@@ -341,9 +341,9 @@ export const Onboarding = () => {
           {step === 3 && (
             <motion.div
               key="step3"
-              initial={{ x, opacity: 0 }}
-              animate={{ x, opacity: 1 }}
-              exit={{ x, opacity: 0 }}
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -20, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="space-y-4"
             >

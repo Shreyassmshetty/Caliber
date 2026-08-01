@@ -99,11 +99,11 @@ app.post("/api/auth/signup", async (req, res) => {
     email: email.toLowerCase(),
     passwordHash,
     profile: {
-      onboarded,
-      hideCaloriesRemaining,
-      macroProteinPercentage,
-      macroCarbsPercentage,
-      macroFatPercentage,
+      onboarded: false,
+      hideCaloriesRemaining: false,
+      macroProteinPercentage: 30,
+      macroCarbsPercentage: 45,
+      macroFatPercentage: 25,
     }
   };
 
@@ -185,11 +185,11 @@ app.get("/api/auth/google/url", (req, res) => {
 
   // Real Google OAuth URL
   const params = new URLSearchParams({
-    client_id,
-    redirect_uri,
+    client_id: clientId || "",
+    redirect_uri: redirect_uri as string,
     response_type: "code",
     scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
-    state,
+    state: redirect_uri as string,
     access_type: "offline",
     prompt: "consent"
   });
@@ -215,11 +215,11 @@ app.post("/api/auth/google/simulate", async (req, res) => {
       email,
       passwordHash: `google_simulated_${Date.now()}`,
       profile: {
-        onboarded,
-        hideCaloriesRemaining,
-        macroProteinPercentage,
-        macroCarbsPercentage,
-        macroFatPercentage,
+        onboarded: false,
+        hideCaloriesRemaining: false,
+        macroProteinPercentage: 30,
+        macroCarbsPercentage: 45,
+        macroFatPercentage: 25,
       }
     };
     await createUser(user);
@@ -312,16 +312,16 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
 
               try {
                 const response = await fetch('/api/auth/google/simulate', {
-                  method,
+                  method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email)
+                  body: JSON.stringify({ email: emailInput })
                 });
 
                 if (response.ok) {
                   const data = await response.json();
                   if (window.opener) {
                     window.opener.postMessage({
-                      type,
+                      type: 'GOOGLE_AUTH_SUCCESS',
                       token: data.token,
                       user: data.user
                     }, '*');
@@ -352,7 +352,7 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
         <body>
           <script>
             if (window.opener) {
-              window.opener.postMessage({ type, error: '${error}' }, '*');
+              window.opener.postMessage({ type: 'GOOGLE_AUTH_ERROR', error: '${error}' }, '*');
               window.close();
             }
           </script>
@@ -377,10 +377,10 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        code,
-        client_id,
-        client_secret,
-        redirect_uri,
+        code: code as string,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri as string,
         grant_type: "authorization_code"
       })
     });
@@ -419,11 +419,11 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
         email: email.toLowerCase().trim(),
         passwordHash: `google_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         profile: {
-          onboarded,
-          hideCaloriesRemaining,
-          macroProteinPercentage,
-          macroCarbsPercentage,
-          macroFatPercentage,
+          onboarded: false,
+          hideCaloriesRemaining: false,
+          macroProteinPercentage: 30,
+          macroCarbsPercentage: 45,
+          macroFatPercentage: 25,
         }
       };
       await createUser(user);
@@ -437,7 +437,7 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
           <script>
             if (window.opener) {
               window.opener.postMessage({
-                type,
+                type: 'GOOGLE_AUTH_SUCCESS',
                 token: '${jwtToken}',
                 user: {
                   id: '${user.id}',
@@ -456,14 +456,14 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
       </html>
     `);
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Google OAuth callback error", err);
     res.send(`
       <html>
         <body>
           <script>
             if (window.opener) {
-              window.opener.postMessage({ type, error: '${err?.message || "Internal server error during authentication"}' }, '*');
+              window.opener.postMessage({ type: 'GOOGLE_AUTH_ERROR', error: '${err?.message || "Internal server error during authentication"}' }, '*');
               window.close();
             }
           </script>

@@ -114,7 +114,7 @@ export const AppProvider = ({ children }) => {
         let success = false;
         if (item.type === 'LOG_FOOD') {
           const res = await fetch('/api/food/log', {
-            method,
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -127,14 +127,14 @@ export const AppProvider = ({ children }) => {
             success = true;
           } else {
             const res = await fetch(`/api/food/log/${item.payload.id}`, {
-              method,
+              method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             });
             success = res.ok;
           }
         } else if (item.type === 'LOG_EXERCISE') {
           const res = await fetch('/api/exercises', {
-            method,
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -147,14 +147,14 @@ export const AppProvider = ({ children }) => {
             success = true;
           } else {
             const res = await fetch(`/api/exercises/${item.payload.id}`, {
-              method,
+              method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             });
             success = res.ok;
           }
         } else if (item.type === 'UPDATE_WATER') {
           const res = await fetch('/api/water', {
-            method,
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -164,7 +164,7 @@ export const AppProvider = ({ children }) => {
           success = res.ok;
         } else if (item.type === 'SAVE_CUSTOM_MEAL') {
           const res = await fetch('/api/custom-meals', {
-            method,
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -341,7 +341,7 @@ export const AppProvider = ({ children }) => {
     setLoading(true);
     try {
       const res = await fetchWithRetry('/api/auth/signup', {
-        method,
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -369,7 +369,7 @@ export const AppProvider = ({ children }) => {
     setLoading(true);
     try {
       const res = await fetchWithRetry('/api/auth/login', {
-        method,
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -483,7 +483,7 @@ export const AppProvider = ({ children }) => {
     setLoading(true);
     try {
       const res = await fetch('/api/profile/update', {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -517,7 +517,7 @@ export const AppProvider = ({ children }) => {
     if (!effectiveOnline) {
       const tempId = `offline_food_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       const newEntry= {
-        id,
+        id: tempId,
         userId: user?.id || 'offline_user',
         ...food
       };
@@ -539,7 +539,7 @@ export const AppProvider = ({ children }) => {
 
     try {
       const res = await fetch('/api/food/log', {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -559,7 +559,7 @@ export const AppProvider = ({ children }) => {
       console.warn("Network error during logFood. Queueing offline item...");
       const tempId = `offline_food_${Date.now()}`;
       const newEntry= {
-        id,
+        id: tempId,
         userId: user?.id || 'offline_user',
         ...food
       };
@@ -601,7 +601,7 @@ export const AppProvider = ({ children }) => {
 
     try {
       const res = await fetch(`/api/food/log/${id}`, {
-        method,
+        method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       return res.ok;
@@ -623,7 +623,7 @@ export const AppProvider = ({ children }) => {
     if (!effectiveOnline) {
       const tempId = `offline_ex_${Date.now()}`;
       const newEx= {
-        id,
+        id: tempId,
         userId: user?.id || 'offline_user',
         ...exercise
       };
@@ -643,7 +643,7 @@ export const AppProvider = ({ children }) => {
 
     try {
       const res = await fetch('/api/exercises', {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -661,7 +661,7 @@ export const AppProvider = ({ children }) => {
       return false;
     } catch (err) {
       const tempId = `offline_ex_${Date.now()}`;
-      const newEx= { id, userId: user?.id || 'offline_user', ...exercise };
+      const newEx= { id: tempId, userId: user?.id || 'offline_user', ...exercise };
       if (exercise.loggedAt.startsWith(selectedDate)) {
         setExercises(prev => [...prev, newEx]);
       }
@@ -700,7 +700,7 @@ export const AppProvider = ({ children }) => {
 
     try {
       const res = await fetch(`/api/exercises/${id}`, {
-        method,
+        method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       return res.ok;
@@ -719,6 +719,7 @@ export const AppProvider = ({ children }) => {
   const updateWater = async (glasses) => {
     if (!token) return false;
 
+    const dateStr = selectedDate;
     const newWaterLog= {
       id: waterLog?.id || `offline_w_${Date.now()}`,
       userId: user?.id || 'offline_user',
@@ -734,7 +735,7 @@ export const AppProvider = ({ children }) => {
         ...prev.filter(item => !(item.type === 'UPDATE_WATER' && item.payload.dateStr === selectedDate)),
         {
           id: `sync_water_${Date.now()}`,
-          type,
+          type: 'UPDATE_WATER',
           timestamp: new Date().toISOString(),
           title: `Water Intake: ${glasses} glasses`,
           payload: { dateStr, glasses }
@@ -745,7 +746,7 @@ export const AppProvider = ({ children }) => {
 
     try {
       const res = await fetch('/api/water', {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -764,7 +765,7 @@ export const AppProvider = ({ children }) => {
         ...prev.filter(item => !(item.type === 'UPDATE_WATER' && item.payload.dateStr === selectedDate)),
         {
           id: `sync_water_${Date.now()}`,
-          type,
+          type: 'UPDATE_WATER',
           timestamp: new Date().toISOString(),
           title: `Water Intake: ${glasses} glasses`,
           payload: { dateStr, glasses }
@@ -798,7 +799,7 @@ export const AppProvider = ({ children }) => {
 
     try {
       const res = await fetch('/api/custom-meals', {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -836,7 +837,7 @@ export const AppProvider = ({ children }) => {
     if (!token) return false;
     try {
       const res = await fetch(`/api/custom-meals/${id}`, {
-        method,
+        method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

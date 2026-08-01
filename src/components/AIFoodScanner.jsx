@@ -41,7 +41,7 @@ export const AIFoodScanner = ({ onFoodFound, onClose }) => {
 
     try {
       const res = await fetch('/api/ai/analyze', {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

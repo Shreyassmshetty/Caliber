@@ -42,7 +42,7 @@ export const Auth = () => {
       <div className="text-center mb-8">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale, opacity: 1 }}
+          animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
           className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-brand-bg shadow-lg mb-4"
         >
@@ -57,8 +57,8 @@ export const Auth = () => {
       </div>
 
       <motion.div
-        initial={{ y, opacity: 0 }}
-        animate={{ y, opacity: 1 }}
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.4 }}
         className="bg-white p-8 rounded-3xl shadow-md border border-gray-100"
       >
