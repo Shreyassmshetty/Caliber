@@ -2,8 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 import { createClient } from '@supabase/supabase-js';
 
 const DB_DIR = path.join(process.cwd(), 'data');
@@ -23,64 +21,6 @@ if (supabaseUrl && supabaseKey) {
   } catch (err) {
     console.warn("[Supabase Warning] Could not initialize Supabase client:", err);
   }
-}
-
-// Initialize Firestore safely with a fallback flag
-let dbFirestore = null;
-
-export function handleFirestoreError(err, context) {
-  const errMsg = err.message || String(err);
-  const isApiDisabledOrPermDenied = 
-    errMsg.includes('PERMISSION_DENIED') || 
-    errMsg.includes('Cloud Firestore API has not been used') || 
-    errMsg.includes('disabled') || 
-    errMsg.includes('has not been used') ||
-    errMsg.includes('code = 7') ||
-    errMsg.includes('code 7');
-
-  if (isApiDisabledOrPermDenied && dbFirestore !== null) {
-    console.warn(`[Firestore Status] ${context ? context + ': ' : ''}Firestore API is disabled or permissions are missing. Disabling Firestore adapter permanently for this session and falling back to robust Local JSON database. Details: ${errMsg}`);
-    dbFirestore = null;
-  } else {
-    console.warn(`[Firestore Warning] ${context ? context + ': ' : ''}Operation failed with error: ${errMsg}. Falling back to Local JSON database.`);
-  }
-}
-
-try {
-  const hasCreds = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_CONFIG;
-  const isGcp = process.env.K_SERVICE || process.env.GOOGLE_CLOUD_PROJECT;
-  
-  if (hasCreds || isGcp) {
-    if (getApps().length === 0) {
-      if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        try {
-          const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-          initializeApp({
-            credential: cert(serviceAccount)
-          });
-        } catch (e) {
-          initializeApp();
-        }
-      } else {
-        initializeApp();
-      }
-    }
-    dbFirestore = getFirestore();
-    dbFirestore.settings({ ignoreUndefinedProperties: true });
-    
-    // Asynchronously probe Firestore database availability right away to avoid high latency on user requests
-    dbFirestore.collection('_startup_probe').limit(1).get()
-      .then(() => {
-        console.log("Firestore startup connection probe succeeded. Persistent Cloud Firestore active.");
-      })
-      .catch((err) => {
-        handleFirestoreError(err, 'Startup Connection Probe');
-      });
-  } else {
-    console.log("No cloud credentials found. Running on robust Local JSON file database.");
-  }
-} catch (err) {
-  console.warn("Could not connect to Firestore (Permission/Config). Operating on Local JSON database fallback. Error:", err);
 }
 
 // Predefined fallback foods list
@@ -182,22 +122,6 @@ export async function getUserById(id) {
       console.warn("[Supabase Warning] getUserById error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      const doc = await dbFirestore.collection('users').doc(id).get();
-      if (doc.exists) {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          email: data.email,
-          passwordHash: data.passwordHash,
-          profile: data.profile || {}
-        };
-      }
-    } catch (err) {
-      handleFirestoreError(err, "getUserById");
-    }
-  }
   const db = readDb();
   return db.users.find(u => u.id === id) || null;
 }
@@ -218,23 +142,6 @@ export async function getUserByEmail(email) {
       }
     } catch (err) {
       console.warn("[Supabase Warning] getUserByEmail error:", err);
-    }
-  }
-  if (dbFirestore) {
-    try {
-      const snap = await dbFirestore.collection('users').where('email', '==', normEmail).limit(1).get();
-      if (!snap.empty) {
-        const doc = snap.docs[0];
-        const data = doc.data();
-        return {
-          id: doc.id,
-          email: data.email,
-          passwordHash: data.passwordHash,
-          profile: data.profile || {}
-        };
-      }
-    } catch (err) {
-      handleFirestoreError(err, "getUserByEmail");
     }
   }
   const db = readDb();
@@ -260,19 +167,6 @@ export async function createUser(user) {
       console.warn("[Supabase Warning] createUser error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(user.id).set({
-        email: user.email,
-        passwordHash: user.passwordHash,
-        profile: user.profile
-      });
-      console.log(`User ${user.id} created in Firestore`);
-      return;
-    } catch (err) {
-      handleFirestoreError(err, "createUser");
-    }
-  }
   const db = readDb();
   db.users.push(user);
   writeDb(db);
@@ -290,15 +184,6 @@ export async function updateUserProfile(userId, profile) {
       console.warn("[Supabase Warning] updateUserProfile returned error:", error);
     } catch (err) {
       console.warn("[Supabase Warning] updateUserProfile error:", err);
-    }
-  }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(userId).update({ profile });
-      console.log(`User profile updated in Firestore for ${userId}`);
-      return;
-    } catch (err) {
-      handleFirestoreError(err, "updateUserProfile");
     }
   }
   const db = readDb();
@@ -337,18 +222,6 @@ export async function getFoodEntries(userId, dateStr) {
       console.warn("[Supabase Warning] getFoodEntries error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      const snap = await dbFirestore.collection('users').doc(userId).collection('foodEntries').get();
-      let entries = snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() }));
-      if (dateStr) {
-        entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
-      }
-      return entries;
-    } catch (err) {
-      handleFirestoreError(err, "getFoodEntries");
-    }
-  }
   const db = readDb();
   let entries = db.foodEntries.filter(entry => entry.userId === userId);
   if (dateStr) {
@@ -383,26 +256,6 @@ export async function logFoodEntry(entry) {
       console.warn("[Supabase Warning] logFoodEntry error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(entry.userId).collection('foodEntries').doc(entry.id).set({
-        foodName: entry.foodName,
-        calories: entry.calories,
-        protein: entry.protein,
-        carbs: entry.carbs,
-        fat: entry.fat,
-        servingSize: entry.servingSize,
-        quantity: entry.quantity,
-        mealType: entry.mealType,
-        loggedAt: entry.loggedAt,
-        userId: entry.userId
-      });
-      console.log(`Food entry ${entry.id} saved to Firestore`);
-      return;
-    } catch (err) {
-      handleFirestoreError(err, "logFoodEntry");
-    }
-  }
   const db = readDb();
   db.foodEntries.push(entry);
   writeDb(db);
@@ -419,15 +272,6 @@ export async function deleteFoodEntry(userId, id) {
       }
     } catch (err) {
       console.warn("[Supabase Warning] deleteFoodEntry error:", err);
-    }
-  }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(userId).collection('foodEntries').doc(id).delete();
-      console.log(`Food entry ${id} deleted from Firestore`);
-      return true;
-    } catch (err) {
-      handleFirestoreError(err, "deleteFoodEntry");
     }
   }
   const db = readDb();
@@ -463,18 +307,6 @@ export async function getExercises(userId, dateStr) {
       console.warn("[Supabase Warning] getExercises error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      const snap = await dbFirestore.collection('users').doc(userId).collection('exercises').get();
-      let entries = snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() }));
-      if (dateStr) {
-        entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
-      }
-      return entries;
-    } catch (err) {
-      handleFirestoreError(err, "getExercises");
-    }
-  }
   const db = readDb();
   let entries = db.exercises.filter(e => e.userId === userId);
   if (dateStr) {
@@ -504,21 +336,6 @@ export async function logExercise(entry) {
       console.warn("[Supabase Warning] logExercise error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(entry.userId).collection('exercises').doc(entry.id).set({
-        activityType: entry.activityType,
-        durationMinutes: entry.durationMinutes,
-        caloriesBurned: entry.caloriesBurned,
-        loggedAt: entry.loggedAt,
-        userId: entry.userId
-      });
-      console.log(`Exercise entry ${entry.id} saved to Firestore`);
-      return;
-    } catch (err) {
-      handleFirestoreError(err, "logExercise");
-    }
-  }
   const db = readDb();
   db.exercises.push(entry);
   writeDb(db);
@@ -535,15 +352,6 @@ export async function deleteExercise(userId, id) {
       }
     } catch (err) {
       console.warn("[Supabase Warning] deleteExercise error:", err);
-    }
-  }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(userId).collection('exercises').doc(id).delete();
-      console.log(`Exercise entry ${id} deleted from Firestore`);
-      return true;
-    } catch (err) {
-      handleFirestoreError(err, "deleteExercise");
     }
   }
   const db = readDb();
@@ -578,14 +386,6 @@ export async function getCustomMeals(userId) {
       console.warn("[Supabase Warning] getCustomMeals error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      const snap = await dbFirestore.collection('users').doc(userId).collection('customMeals').get();
-      return snap.docs.map(doc => ({ id: doc.id, userId, ...doc.data() }));
-    } catch (err) {
-      handleFirestoreError(err, "getCustomMeals");
-    }
-  }
   const db = readDb();
   return db.customMeals.filter(m => m.userId === userId);
 }
@@ -614,24 +414,6 @@ export async function createCustomMeal(meal) {
       console.warn("[Supabase Warning] createCustomMeal error:", err);
     }
   }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(meal.userId).collection('customMeals').doc(meal.id).set({
-        mealName: meal.mealName,
-        ingredients: meal.ingredients,
-        totalCalories: meal.totalCalories,
-        totalProtein: meal.totalProtein,
-        totalCarbs: meal.totalCarbs,
-        totalFat: meal.totalFat,
-        createdAt: meal.createdAt,
-        userId: meal.userId
-      });
-      console.log(`Custom meal ${meal.id} saved to Firestore`);
-      return;
-    } catch (err) {
-      handleFirestoreError(err, "createCustomMeal");
-    }
-  }
   const db = readDb();
   db.customMeals.push(meal);
   writeDb(db);
@@ -648,15 +430,6 @@ export async function deleteCustomMeal(userId, id) {
       }
     } catch (err) {
       console.warn("[Supabase Warning] deleteCustomMeal error:", err);
-    }
-  }
-  if (dbFirestore) {
-    try {
-      await dbFirestore.collection('users').doc(userId).collection('customMeals').doc(id).delete();
-      console.log(`Custom meal ${id} deleted from Firestore`);
-      return true;
-    } catch (err) {
-      handleFirestoreError(err, "deleteCustomMeal");
     }
   }
   const db = readDb();
@@ -685,16 +458,6 @@ export async function getWaterLog(userId, dateStr) {
       }
     } catch (err) {
       console.warn("[Supabase Warning] getWaterLog error:", err);
-    }
-  }
-  if (dbFirestore) {
-    try {
-      const doc = await dbFirestore.collection('users').doc(userId).collection('waterIntake').doc(dateStr).get();
-      if (doc.exists) {
-        return { id: doc.id, userId, dateStr, ...doc.data() };
-      }
-    } catch (err) {
-      handleFirestoreError(err, "getWaterLog");
     }
   }
   const db = readDb();
@@ -727,20 +490,6 @@ export async function updateWaterLog(userId, dateStr, glasses) {
       console.warn("[Supabase Warning] updateWaterLog returned error:", error);
     } catch (err) {
       console.warn("[Supabase Warning] updateWaterLog error:", err);
-    }
-  }
-  if (dbFirestore) {
-    try {
-      const ref = dbFirestore.collection('users').doc(userId).collection('waterIntake').doc(dateStr);
-      const data = {
-        glasses: finalGlasses,
-        updatedAt: new Date().toISOString()
-      };
-      await ref.set(data, { merge: true });
-      console.log(`Water log updated in Firestore for user ${userId} date ${dateStr}`);
-      return { id: dateStr, userId, dateStr, ...data };
-    } catch (err) {
-      handleFirestoreError(err, "updateWaterLog");
     }
   }
   const db = readDb();
