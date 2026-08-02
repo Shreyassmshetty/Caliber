@@ -10,6 +10,7 @@ export const getLocalDateString = (d = new Date()) => {
 };
 
 export const AppProvider = ({ children }) => {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => {
     try {
@@ -113,7 +114,7 @@ export const AppProvider = ({ children }) => {
       try {
         let success = false;
         if (item.type === 'LOG_FOOD') {
-          const res = await fetch('/api/food/log', {
+          const res = await fetch(`${apiBase}/api/food/log`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -126,14 +127,14 @@ export const AppProvider = ({ children }) => {
           if (item.payload.id.startsWith('offline_')) {
             success = true;
           } else {
-            const res = await fetch(`/api/food/log/${item.payload.id}`, {
+            const res = await fetch(`${apiBase}/api/food/log/${item.payload.id}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             });
             success = res.ok;
           }
         } else if (item.type === 'LOG_EXERCISE') {
-          const res = await fetch('/api/exercises', {
+          const res = await fetch(`${apiBase}/api/exercises`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -146,14 +147,14 @@ export const AppProvider = ({ children }) => {
           if (item.payload.id.startsWith('offline_')) {
             success = true;
           } else {
-            const res = await fetch(`/api/exercises/${item.payload.id}`, {
+            const res = await fetch(`${apiBase}/api/exercises/${item.payload.id}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             });
             success = res.ok;
           }
         } else if (item.type === 'UPDATE_WATER') {
-          const res = await fetch('/api/water', {
+          const res = await fetch(`${apiBase}/api/water`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -163,7 +164,7 @@ export const AppProvider = ({ children }) => {
           });
           success = res.ok;
         } else if (item.type === 'SAVE_CUSTOM_MEAL') {
-          const res = await fetch('/api/custom-meals', {
+          const res = await fetch(`${apiBase}/api/custom-meals`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -209,7 +210,7 @@ export const AppProvider = ({ children }) => {
       }
 
       try {
-        const res = await fetch('/api/auth/me', {
+        const res = await fetch(`${apiBase}/api/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -248,7 +249,7 @@ export const AppProvider = ({ children }) => {
       return;
     }
     try {
-      const res = await fetch('/api/custom-meals', {
+      const res = await fetch(`${apiBase}/api/custom-meals`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
       });
       if (res.ok) {
@@ -284,17 +285,17 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const foodRes = await fetch(`/api/food/entries?date=${dateStr}`, {
+      const foodRes = await fetch(`${apiBase}/api/food/entries?date=${dateStr}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const foodData = foodRes.ok ? await foodRes.json() : [];
 
-      const exerciseRes = await fetch(`/api/exercises?date=${dateStr}`, {
+      const exerciseRes = await fetch(`${apiBase}/api/exercises?date=${dateStr}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const exerciseData = exerciseRes.ok ? await exerciseRes.json() : [];
 
-      const waterRes = await fetch(`/api/water?date=${dateStr}`, {
+      const waterRes = await fetch(`${apiBase}/api/water?date=${dateStr}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const waterData = waterRes.ok ? await waterRes.json() : null;
@@ -340,7 +341,7 @@ export const AppProvider = ({ children }) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetchWithRetry('/api/auth/signup', {
+      const res = await fetchWithRetry(`${apiBase}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -368,7 +369,7 @@ export const AppProvider = ({ children }) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetchWithRetry('/api/auth/login', {
+      const res = await fetchWithRetry(`${apiBase}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -408,9 +409,8 @@ export const AppProvider = ({ children }) => {
     setError(null);
     setLoading(true);
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
       const redirectUri = `${apiBase || window.location.origin}/auth/google/callback`;
-      const res = await fetchWithRetry(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
+      const res = await fetchWithRetry(`${apiBase}/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
       
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -501,7 +501,7 @@ export const AppProvider = ({ children }) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/profile/update', {
+      const res = await fetch(`${apiBase}/api/profile/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -557,7 +557,7 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const res = await fetch('/api/food/log', {
+      const res = await fetch(`${apiBase}/api/food/log`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -619,7 +619,7 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const res = await fetch(`/api/food/log/${id}`, {
+      const res = await fetch(`${apiBase}/api/food/log/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -661,7 +661,7 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const res = await fetch('/api/exercises', {
+      const res = await fetch(`${apiBase}/api/exercises`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -718,7 +718,7 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const res = await fetch(`/api/exercises/${id}`, {
+      const res = await fetch(`${apiBase}/api/exercises/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -764,7 +764,7 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const res = await fetch('/api/water', {
+      const res = await fetch(`${apiBase}/api/water`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -817,7 +817,7 @@ export const AppProvider = ({ children }) => {
     }
 
     try {
-      const res = await fetch('/api/custom-meals', {
+      const res = await fetch(`${apiBase}/api/custom-meals`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -855,7 +855,7 @@ export const AppProvider = ({ children }) => {
   const deleteCustomMeal = async (id) => {
     if (!token) return false;
     try {
-      const res = await fetch(`/api/custom-meals/${id}`, {
+      const res = await fetch(`${apiBase}/api/custom-meals/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
