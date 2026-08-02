@@ -271,7 +271,7 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
               Google login is fully integrated Real credentials are not configured yet, so you can test the entire onboarding and tracking experience in this developer sandbox.
             </p>
 
-            <form id="sandbox-form" class="space-y-4">
+            <form id="sandbox-form" enctype="application/x-www-form-urlencoded" class="space-y-4">
               <div class="text-left">
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                   Simulated User Email

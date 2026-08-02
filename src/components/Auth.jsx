@@ -72,9 +72,9 @@ export const Auth = () => {
                   <p>In Google Cloud Console under <strong>APIs & Services &gt; Credentials &gt; OAuth 2.0 Client IDs</strong>, add these to <strong>Authorized redirect URIs</strong>:</p>
                   <div className="space-y-1">
                     <code className="block bg-white/90 p-1.5 rounded font-mono text-[10px] break-all select-all border border-red-200">
-                      {window.location.origin}/auth/google/callback
+                      {(import.meta.env.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, '')}/auth/google/callback
                     </code>
-                    {window.location.origin.includes('ais-dev-') && (
+                    {window.location.origin.includes('ais-dev-') && !import.meta.env.VITE_API_BASE_URL && (
                       <code className="block bg-white/90 p-1.5 rounded font-mono text-[10px] break-all select-all border border-red-200">
                         {window.location.origin.replace('ais-dev-', 'ais-pre-')}/auth/google/callback
                       </code>

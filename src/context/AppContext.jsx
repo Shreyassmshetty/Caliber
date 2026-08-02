@@ -408,7 +408,8 @@ export const AppProvider = ({ children }) => {
     setError(null);
     setLoading(true);
     try {
-      const redirectUri = `${window.location.origin}/auth/google/callback`;
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+      const redirectUri = `${apiBase || window.location.origin}/auth/google/callback`;
       const res = await fetchWithRetry(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
       
       if (!res.ok) {
@@ -438,7 +439,7 @@ export const AppProvider = ({ children }) => {
           setLoading(false);
           // If login wasn't successful after popup closed
           if (!localStorage.getItem('cnt_token')) {
-            setError(`Google sign-in popup was closed. If you got "Error 400: redirect_uri_mismatch", please add ${window.location.origin}/auth/google/callback to Authorized redirect URIs in Google Cloud Console.`);
+            setError(`Google sign-in popup was closed. If you got "Error 400: redirect_uri_mismatch", please add ${redirectUri} to Authorized redirect URIs in Google Cloud Console.`);
           }
         }
       }, 500);
@@ -453,9 +454,27 @@ export const AppProvider = ({ children }) => {
   // Global listener for Google auth messages from the popup callback
   useEffect(() => {
     const handleMessage = (event) => {
-      // Simple security checks on origin (must be same origin or *.run.app)
+      // Simple security checks on origin (must be same origin, configured API base origin, or common sandboxes)
       const origin = event.origin;
-      if (!origin.endsWith('.run.app') && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      let apiBaseOrigin = '';
+      try {
+        if (apiBaseUrl) {
+          apiBaseOrigin = new URL(apiBaseUrl).origin;
+        }
+      } catch (e) {
+        console.error("Invalid VITE_API_BASE_URL", e);
+      }
+
+      const isAllowed = 
+        origin === window.location.origin ||
+        (apiBaseOrigin && origin === apiBaseOrigin) ||
+        origin.endsWith('.run.app') || 
+        origin.includes('localhost') || 
+        origin.includes('127.0.0.1') ||
+        origin.includes('vercel.app');
+
+      if (!isAllowed) {
         return;
       }
 
