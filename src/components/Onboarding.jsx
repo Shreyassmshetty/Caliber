@@ -106,17 +106,17 @@ export const Onboarding = () => {
       fat = 25;
     }
 
-    const payload= {
+    const payload = {
       name: name.trim() || undefined,
-      age,
+      age: finalAge,
       weight,
       height,
       sex,
       activityLevel,
       goal,
-      macroProteinPercentage,
-      macroCarbsPercentage,
-      macroFatPercentage,
+      macroProteinPercentage: protein,
+      macroCarbsPercentage: carbs,
+      macroFatPercentage: fat,
     };
 
     if (customCalorieTarget) {

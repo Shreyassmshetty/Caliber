@@ -7,6 +7,7 @@ import { VoiceFoodInput } from './VoiceFoodInput';
 
 export const FoodLogger = () => {
   const { logFood, customMeals, saveCustomMeal, deleteCustomMeal } = useApp();
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
 
   // Navigation tab inside food logger
   const [activeTab, setActiveTab] = useState('search');
@@ -53,6 +54,21 @@ export const FoodLogger = () => {
     }, 3000);
   };
 
+  const performSearch = async (query) => {
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/food/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   // Run search whenever query changes (with simple debouncing)
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -65,21 +81,6 @@ export const FoodLogger = () => {
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
-
-  const performSearch = async (query) => {
-    setSearchLoading(true);
-    try {
-      const res = await fetch(`/api/food/search?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
 
   // Handle direct item selection from standard search, scanner, or OCR
   const handleSelectFood = (food) => {
@@ -106,7 +107,7 @@ export const FoodLogger = () => {
       fat: Number(selectedFood.fat),
       servingSize: customServing || selectedFood.servingSize,
       quantity: Number(logQuantity),
-      mealType,
+      mealType: logMealType,
       loggedAt: new Date().toISOString()
     };
 
@@ -126,14 +127,14 @@ export const FoodLogger = () => {
     if (!manualName || !manualCalories) return;
 
     const payload = {
-      foodName,
+      foodName: manualName,
       calories: Number(manualCalories),
       protein: Number(manualProtein || 0),
       carbs: Number(manualCarbs || 0),
       fat: Number(manualFat || 0),
       servingSize: manualServing || "1 serving",
-      quantity,
-      mealType,
+      quantity: 1,
+      mealType: manualCategory,
       loggedAt: new Date().toISOString()
     };
 
@@ -157,7 +158,7 @@ export const FoodLogger = () => {
     if (val.trim().length > 1) {
       setRecipeSearchLoading(true);
       try {
-        const res = await fetch(`/api/food/search?q=${encodeURIComponent(val)}`);
+        const res = await fetch(`${apiBase}/api/food/search?q=${encodeURIComponent(val)}`);
         if (res.ok) {
           const data = await res.json();
           setRecipeSearchResults(data);
@@ -220,8 +221,8 @@ export const FoodLogger = () => {
     if (!recipeName || recipeIngredients.length === 0) return;
 
     const payload = {
-      mealName,
-      ingredients,
+      mealName: recipeName,
+      ingredients: recipeIngredients,
       totalCalories: recipeTotals.calories,
       totalProtein: recipeTotals.protein,
       totalCarbs: recipeTotals.carbs,
@@ -246,8 +247,8 @@ export const FoodLogger = () => {
       carbs: meal.totalCarbs,
       fat: meal.totalFat,
       servingSize: "1 custom recipe portion",
-      quantity,
-      mealType, // uses current dashboard log category
+      quantity: 1,
+      mealType: logMealType, // uses current dashboard log category
       loggedAt: new Date().toISOString()
     };
 
@@ -447,13 +448,13 @@ export const FoodLogger = () => {
 
               <div className="bg-white p-5 rounded-3xl border border-gray-100 space-y-4">
                 <h4 className="font-semibold text-xs uppercase tracking-wider text-gray-400 mb-1">Quick Presets</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { name: "Coffee with Milk", cal, p, c, f, s: "1 cup" },
-                  { name: "Scrambled Eggs (2)", cal, p, c, f, s: "2 large eggs" },
-                  { name: "Snack Almonds", cal, p, c, f, s: "28g" },
-                  { name: "Whey Shake", cal, p, c, f, s: "1 scoop in water" }
-                ].map((item, index) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { name: "Coffee with Milk", cal: 45, p: 2, c: 4, f: 2, s: "1 cup" },
+                    { name: "Scrambled Eggs (2)", cal: 180, p: 12, c: 2, f: 14, s: "2 large eggs" },
+                    { name: "Snack Almonds", cal: 160, p: 6, c: 6, f: 14, s: "28g" },
+                    { name: "Whey Shake", cal: 120, p: 24, c: 3, f: 1.5, s: "1 scoop in water" }
+                  ].map((item, index) => (
                   <button
                     key={index}
                     onClick={() => handleSelectFood({
@@ -542,10 +543,10 @@ export const FoodLogger = () => {
               <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Category / Meal</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { id, label: '🍳 Bfast' },
-                  { id, label: '🥗 Lunch' },
-                  { id, label: '🥩 Dinner' },
-                  { id, label: '🍎 Snack' },
+                  { id: 'breakfast', label: '🍳 Bfast' },
+                  { id: 'lunch', label: '🥗 Lunch' },
+                  { id: 'dinner', label: '🥩 Dinner' },
+                  { id: 'snack', label: '🍎 Snack' },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -826,10 +827,10 @@ export const FoodLogger = () => {
             <span className="font-bold text-gray-500 uppercase tracking-wide">Target Category:</span>
             <div className="flex gap-1">
               {[
-                { id, label: '🍳 Bfast' },
-                { id, label: '🥗 Lunch' },
-                { id, label: '🥩 Dinner' },
-                { id, label: '🍎 Snack' }
+                { id: 'breakfast', label: '🍳 Bfast' },
+                { id: 'lunch', label: '🥗 Lunch' },
+                { id: 'dinner', label: '🥩 Dinner' },
+                { id: 'snack', label: '🍎 Snack' }
               ].map((item) => (
                 <button
                   key={item.id}

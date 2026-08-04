@@ -53,10 +53,10 @@ export const Trends = () => {
         dateStr,
         dayName,
         isWeekend,
-        Target,
-        Intake,
-        ActiveBurn,
-        NetIntake,
+        Target: calorieTarget,
+        Intake: dayIntake,
+        ActiveBurn: dayBurn,
+        NetIntake: dayIntake - dayBurn,
       });
     }
 
@@ -111,16 +111,16 @@ export const Trends = () => {
         {/* Recharts responsive stage */}
         <div className="w-full h-64 text-[10px] mt-4 font-mono">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={weeklyData} margin={{ top, right, left, bottom: 0 }}>
+            <LineChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
               <XAxis dataKey="dayName" stroke="#9ca3af" axisLine={false} tickLine={false} />
               <YAxis stroke="#9ca3af" axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#ffffff',
-                  borderRadius,
+                  borderRadius: '16px',
                   border: '1px solid #e5e7eb',
-                  fontSize,
+                  fontSize: '12px',
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
                 }}
               />
@@ -140,7 +140,7 @@ export const Trends = () => {
                 dataKey="Intake"
                 stroke="var(--color-primary)"
                 strokeWidth={2.5}
-                dot={{ r, strokeWidth, fill: 'var(--color-primary)' }}
+                dot={{ r: 3, strokeWidth: 1, fill: 'var(--color-primary)' }}
                 activeDot={{ r: 6 }}
               />
               <Line
@@ -149,7 +149,7 @@ export const Trends = () => {
                 dataKey="ActiveBurn"
                 stroke="#3b82f6"
                 strokeWidth={1.5}
-                dot={{ r, strokeWidth, fill: '#3b82f6' }}
+                dot={{ r: 3, strokeWidth: 1, fill: '#3b82f6' }}
               />
             </LineChart>
           </ResponsiveContainer>

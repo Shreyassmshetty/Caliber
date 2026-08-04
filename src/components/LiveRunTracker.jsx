@@ -131,8 +131,8 @@ export const LiveRunTracker = ({ onClose }) => {
     const durationMins = Math.max(1, Math.round(durationMs / 1000 / 60));
     await logExercise({
       activityType: `Run/Walk (${distanceKm.toFixed(2)} km, ${estimatedSteps} steps)`,
-      durationMinutes,
-      caloriesBurned,
+      durationMinutes: durationMins,
+      caloriesBurned: estimatedCals,
       loggedAt: new Date().toISOString()
     });
     setSaving(false);

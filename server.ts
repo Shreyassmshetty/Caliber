@@ -870,29 +870,32 @@ app.post("/api/ai/analyze", authenticateToken, async (req, res) => {
 
     const imagePart = {
       inlineData: {
-        mimeType,
-        data,
+        mimeType: mimeType || "image/jpeg",
+        data: cleanBase64,
       },
     };
 
     const textPart = {
-      text: `Identify the food or meal in this image. Estimate its macronutrient values (protein in grams, carbs in grams, fat in grams), total calories, and standard serving size. Return your response strictly. Do not include markdown wraps or code block symbols:
-      {
-        "foodName": "Descriptive meal name",
-        "calories": 420,
-        "protein": 18,
-        "carbs": 52,
-        "fat": 11,
-        "servingSize": "1 bowl/plate/portion"
-      }
-      Be.`
+      text: `Identify the food or meal in this image. Estimate its macronutrient values (protein in grams, carbs in grams, fat in grams), total calories (kcal), a descriptive food name, and standard serving size.`
     };
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
-      contents: [imagePart, textPart],
+      contents: { parts: [imagePart, textPart] },
       config: {
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            foodName: { type: Type.STRING, description: "Descriptive meal name" },
+            calories: { type: Type.NUMBER, description: "Total estimated calories in kcal" },
+            protein: { type: Type.NUMBER, description: "Estimated protein in grams" },
+            carbs: { type: Type.NUMBER, description: "Estimated carbs in grams" },
+            fat: { type: Type.NUMBER, description: "Estimated fat in grams" },
+            servingSize: { type: Type.STRING, description: "Serving size description" }
+          },
+          required: ["foodName", "calories", "protein", "carbs", "fat", "servingSize"]
+        }
       }
     });
 
@@ -957,19 +960,21 @@ app.post("/api/ai/parse-voice", authenticateToken, async (req, res) => {
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: `You are an expert nutritionist and meal analyzer. Analyze this description of a meal or food item: "${textPrompt.trim()}".
-Estimate the macronutrients (protein in grams, carbs in grams, fat in grams), total calories (kcal), a clean descriptive food name, and serving size.
-Return your response strictly:
-{
-  "foodName": "Short descriptive food name",
-  "calories": 450,
-  "protein": 25,
-  "carbs": 50,
-  "fat": 15,
-  "servingSize": "1 portion"
-}
-Be.`,
+Estimate the macronutrients (protein in grams, carbs in grams, fat in grams), total calories (kcal), a clean descriptive food name, and serving size.`,
       config: {
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            foodName: { type: Type.STRING, description: "Short descriptive food name" },
+            calories: { type: Type.NUMBER, description: "Total calories in kcal" },
+            protein: { type: Type.NUMBER, description: "Protein in grams" },
+            carbs: { type: Type.NUMBER, description: "Carbohydrates in grams" },
+            fat: { type: Type.NUMBER, description: "Fat in grams" },
+            servingSize: { type: Type.STRING, description: "Serving size description" }
+          },
+          required: ["foodName", "calories", "protein", "carbs", "fat", "servingSize"]
+        }
       }
     });
 

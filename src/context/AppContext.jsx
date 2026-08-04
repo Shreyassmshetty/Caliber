@@ -103,12 +103,224 @@ export const AppProvider = ({ children }) => {
     setPendingQueue([]);
   };
 
+  const fetchWithRetry = async (url, options = undefined, retries = 3, delay = 1000) => {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchWithRetry(url, options, retries - 1, delay * 2);
+      }
+      throw err;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('cnt_token');
+    setToken(null);
+    setUser(null);
+    setFoodEntries([]);
+    setExercises([]);
+    setWaterLog(null);
+    setCustomMeals([]);
+    setError(null);
+  };
+
+  const fetchCustomMeals = async (authToken) => {
+    if (!effectiveOnline) {
+      try {
+        const cached = localStorage.getItem('caliber_custom_meals');
+        if (cached) setCustomMeals(JSON.parse(cached));
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
+    try {
+      const res = await fetch(`${apiBase}/api/custom-meals`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomMeals(data);
+        localStorage.setItem('caliber_custom_meals', JSON.stringify(data));
+      }
+    } catch (err) {
+      console.error("Failed to fetch custom meals", err);
+    }
+  };
+
+  const fetchDayData = async (dateStr) => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+
+    if (!effectiveOnline) {
+      try {
+        const cached = localStorage.getItem(`caliber_day_${dateStr}`);
+        if (cached) {
+          const { foodData, exerciseData, waterData } = JSON.parse(cached);
+          setFoodEntries(foodData || []);
+          setExercises(exerciseData || []);
+          setWaterLog(waterData || null);
+        }
+      } catch (e) {
+        console.error("Failed to parse cached day data", e);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    try {
+      const foodRes = await fetch(`${apiBase}/api/food/entries?date=${dateStr}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const foodData = foodRes.ok ? await foodRes.json() : [];
+
+      const exerciseRes = await fetch(`${apiBase}/api/exercises?date=${dateStr}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const exerciseData = exerciseRes.ok ? await exerciseRes.json() : [];
+
+      const waterRes = await fetch(`${apiBase}/api/water?date=${dateStr}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const waterData = waterRes.ok ? await waterRes.json() : null;
+
+      setFoodEntries(foodData);
+      setExercises(exerciseData);
+      setWaterLog(waterData);
+
+      localStorage.setItem(`caliber_day_${dateStr}`, JSON.stringify({ foodData, exerciseData, waterData }));
+    } catch (err) {
+      console.warn("Failed to load date data from server, loading local cache", err);
+      try {
+        const cached = localStorage.getItem(`caliber_day_${dateStr}`);
+        if (cached) {
+          const { foodData, exerciseData, waterData } = JSON.parse(cached);
+          setFoodEntries(foodData || []);
+          setExercises(exerciseData || []);
+          setWaterLog(waterData || null);
+        }
+      } catch (e) {
+        setError("Failed to fetch logs for the selected date.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signup = async (email, password) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetchWithRetry(`${apiBase}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Signup failed");
+        return false;
+      }
+
+      localStorage.setItem('cnt_token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+      return true;
+    } catch (err) {
+      setError("Network error. Please check your connection and try again.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (email, password) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetchWithRetry(`${apiBase}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Login failed");
+        return false;
+      }
+
+      localStorage.setItem('cnt_token', data.token);
+      setToken(data.token);
+      setUser(data.user);
+      return true;
+    } catch (err) {
+      setError("Network error. Please check your connection and try again.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Google OAuth login flow (popup-based with mobile/APK fallback)
+  const googleLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const redirectUri = `${apiBase || window.location.origin}/auth/google/callback`;
+      const res = await fetchWithRetry(`${apiBase}/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
+      
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to initiate Google Authentication");
+      }
+      
+      const { url } = await res.json();
+      
+      // Open the authorization URL directly in a popup, or navigate directly if popup blocked / mobile APK
+      const authWindow = window.open(
+        url,
+        'google_oauth_popup',
+        'width=550,height=650,status=no,resizable=yes,scrollbars=yes'
+      );
+      
+      if (!authWindow) {
+        // Fallback for mobile APK / TWA / popup blockers: navigate directly to auth URL
+        window.location.href = url;
+        return;
+      }
+
+      // Track when the popup is closed by user or due to redirect_uri_mismatch
+      const popupChecker = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(popupChecker);
+          setLoading(false);
+          // If login wasn't successful after popup closed
+          if (!localStorage.getItem('cnt_token')) {
+            setError(`Google sign-in popup was closed. If you got "Error 400: redirect_uri_mismatch", please add ${redirectUri} to Authorized redirect URIs in Google Cloud Console.`);
+          }
+        }
+      }, 500);
+
+    } catch (err) {
+      console.error("Google Login initiation failed", err);
+      setError(err?.message || "Network error. Please check your connection and try again.");
+      setLoading(false);
+    }
+  };
+
   // Sync pending items with backend server
   const syncPendingQueue = useCallback(async () => {
     if (!token || pendingQueue.length === 0 || isSyncing || !effectiveOnline) return;
     setIsSyncing(true);
 
-    const remainingItems= [];
+    const remainingItems = [];
 
     for (const item of pendingQueue) {
       try {
@@ -237,219 +449,6 @@ export const AppProvider = ({ children }) => {
       fetchDayData(selectedDate);
     }
   }, [selectedDate, user]);
-
-  const fetchCustomMeals = async (authToken) => {
-    if (!effectiveOnline) {
-      try {
-        const cached = localStorage.getItem('caliber_custom_meals');
-        if (cached) setCustomMeals(JSON.parse(cached));
-      } catch (e) {
-        console.error(e);
-      }
-      return;
-    }
-    try {
-      const res = await fetch(`${apiBase}/api/custom-meals`, {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCustomMeals(data);
-        localStorage.setItem('caliber_custom_meals', JSON.stringify(data));
-      }
-    } catch (err) {
-      console.error("Failed to fetch custom meals", err);
-    }
-  };
-
-  const fetchDayData = async (dateStr) => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-
-    if (!effectiveOnline) {
-      try {
-        const cached = localStorage.getItem(`caliber_day_${dateStr}`);
-        if (cached) {
-          const { foodData, exerciseData, waterData } = JSON.parse(cached);
-          setFoodEntries(foodData || []);
-          setExercises(exerciseData || []);
-          setWaterLog(waterData || null);
-        }
-      } catch (e) {
-        console.error("Failed to parse cached day data", e);
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    try {
-      const foodRes = await fetch(`${apiBase}/api/food/entries?date=${dateStr}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const foodData = foodRes.ok ? await foodRes.json() : [];
-
-      const exerciseRes = await fetch(`${apiBase}/api/exercises?date=${dateStr}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const exerciseData = exerciseRes.ok ? await exerciseRes.json() : [];
-
-      const waterRes = await fetch(`${apiBase}/api/water?date=${dateStr}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const waterData = waterRes.ok ? await waterRes.json() : null;
-
-      setFoodEntries(foodData);
-      setExercises(exerciseData);
-      setWaterLog(waterData);
-
-      localStorage.setItem(`caliber_day_${dateStr}`, JSON.stringify({ foodData, exerciseData, waterData }));
-    } catch (err) {
-      console.warn("Failed to load date data from server, loading local cache", err);
-      try {
-        const cached = localStorage.getItem(`caliber_day_${dateStr}`);
-        if (cached) {
-          const { foodData, exerciseData, waterData } = JSON.parse(cached);
-          setFoodEntries(foodData || []);
-          setExercises(exerciseData || []);
-          setWaterLog(waterData || null);
-        }
-      } catch (e) {
-        setError("Failed to fetch logs for the selected date.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const fetchWithRetry = async (url, options = undefined, retries = 3, delay = 1000) => {
-    try {
-      const res = await fetch(url, options);
-      return res;
-    } catch (err) {
-      if (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return fetchWithRetry(url, options, retries - 1, delay * 2);
-      }
-      throw err;
-    }
-  };
-
-  const signup = async (email, password) => {
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetchWithRetry(`${apiBase}/api/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Signup failed");
-        return false;
-      }
-
-      localStorage.setItem('cnt_token', data.token);
-      setToken(data.token);
-      setUser(data.user);
-      return true;
-    } catch (err) {
-      setError("Network error. Please check your connection and try again.");
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const login = async (email, password) => {
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await fetchWithRetry(`${apiBase}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Login failed");
-        return false;
-      }
-
-      localStorage.setItem('cnt_token', data.token);
-      setToken(data.token);
-      setUser(data.user);
-      return true;
-    } catch (err) {
-      setError("Network error. Please check your connection and try again.");
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('cnt_token');
-    setToken(null);
-    setUser(null);
-    setFoodEntries([]);
-    setExercises([]);
-    setWaterLog(null);
-    setCustomMeals([]);
-    setError(null);
-  };
-
-  // Google OAuth login flow (popup-based with mobile/APK fallback)
-  const googleLogin = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const redirectUri = `${apiBase || window.location.origin}/auth/google/callback`;
-      const res = await fetchWithRetry(`${apiBase}/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
-      
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to initiate Google Authentication");
-      }
-      
-      const { url } = await res.json();
-      
-      // Open the authorization URL directly in a popup, or navigate directly if popup blocked / mobile APK
-      const authWindow = window.open(
-        url,
-        'google_oauth_popup',
-        'width=550,height=650,status=no,resizable=yes,scrollbars=yes'
-      );
-      
-      if (!authWindow) {
-        // Fallback for mobile APK / TWA / popup blockers: navigate directly to auth URL
-        window.location.href = url;
-        return;
-      }
-
-      // Track when the popup is closed by user or due to redirect_uri_mismatch
-      const popupChecker = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(popupChecker);
-          setLoading(false);
-          // If login wasn't successful after popup closed
-          if (!localStorage.getItem('cnt_token')) {
-            setError(`Google sign-in popup was closed. If you got "Error 400: redirect_uri_mismatch", please add ${redirectUri} to Authorized redirect URIs in Google Cloud Console.`);
-          }
-        }
-      }, 500);
-
-    } catch (err) {
-      console.error("Google Login initiation failed", err);
-      setError(err?.message || "Network error. Please check your connection and try again.");
-      setLoading(false);
-    }
-  };
 
   // Global listener for Google auth messages from the popup callback
   useEffect(() => {

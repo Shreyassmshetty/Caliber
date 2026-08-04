@@ -10,6 +10,18 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
   const scannerRef = useRef(null);
 
   // Lookup barcode on Open Food Facts API
+  const stopCamera = () => {
+    if (scannerRef.current) {
+      try {
+        scannerRef.current.clear();
+      } catch (e) {
+        console.error(e);
+      }
+      scannerRef.current = null;
+    }
+    setIsScanning(false);
+  };
+
   const lookupBarcode = async (code) => {
     if (!code) return;
     setLoading(true);
@@ -85,18 +97,6 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
         setIsScanning(false);
       }
     }, 100);
-  };
-
-  const stopCamera = () => {
-    if (scannerRef.current) {
-      try {
-        scannerRef.current.clear();
-      } catch (e) {
-        console.error(e);
-      }
-      scannerRef.current = null;
-    }
-    setIsScanning(false);
   };
 
   useEffect(() => {

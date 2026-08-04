@@ -53,7 +53,7 @@ export const ExerciseLogger = () => {
 
     setLoading(true);
     const payload = {
-      activityType,
+      activityType: activity,
       durationMinutes: Number(duration),
       caloriesBurned: Number(calories),
       loggedAt: new Date().toISOString()

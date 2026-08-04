@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 
 export const AIFoodScanner = ({ onFoodFound, onClose }) => {
   const { token } = useApp();
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
   const [previewUrl, setPreviewUrl] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [mimeType, setMimeType] = useState('image/jpeg');
@@ -40,7 +41,7 @@ export const AIFoodScanner = ({ onFoodFound, onClose }) => {
     setAiError(null);
 
     try {
-      const res = await fetch('/api/ai/analyze', {
+      const res = await fetch(`${apiBase}/api/ai/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

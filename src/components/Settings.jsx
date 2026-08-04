@@ -48,7 +48,7 @@ export const Settings = () => {
       sex,
       activityLevel,
       goal,
-      hideCaloriesRemaining,
+      hideCaloriesRemaining: hideRemaining,
       reminders,
       darkMode
     });
@@ -78,12 +78,12 @@ export const Settings = () => {
   };
 
   const handleRemoveReminder = (id) => {
-    setReminders(reminders.filter(r => r.id === id));
+    setReminders(reminders.filter(r => r.id !== id));
   };
 
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      const permission = await window.Notification.requestPermission();
       if (permission === 'granted') {
         setNotification("Notifications enabled!");
       } else {

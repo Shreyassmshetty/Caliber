@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 
 export const VoiceFoodInput = ({ onFoodFound, onClose }) => {
   const { token } = useApp();
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
   const [transcript, setTranscript] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
@@ -36,11 +37,16 @@ export const VoiceFoodInput = ({ onFoodFound, onClose }) => {
       };
 
       recognition.onerror = (event) => {
-        console.error('Speech recognition error', event.error);
-        if (event.error === 'not-allowed') {
-          setError('Microphone access denied. Please allow microphone access or type your meal below.');
-        } else if (event.error !== 'no-speech') {
-          setError(`Speech recognition error: ${event.error}`);
+        if (event.error === 'no-speech' || event.error === 'aborted') {
+          // Normal events: user didn't speak or cancelled
+          setIsListening(false);
+          return;
+        }
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setError('Microphone access denied. Please allow microphone access or type your meal description below.');
+        } else {
+          console.warn('Speech recognition notice:', event.error);
+          setError(`Microphone notice: ${event.error}. You can also type your meal below.`);
         }
         setIsListening(false);
       };
@@ -78,7 +84,7 @@ export const VoiceFoodInput = ({ onFoodFound, onClose }) => {
       try {
         recognitionRef.current.stop();
       } catch (err) {
-        console.error(err);
+        // Safe ignore
       }
       setIsListening(false);
     } else {
@@ -86,14 +92,16 @@ export const VoiceFoodInput = ({ onFoodFound, onClose }) => {
         recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
-        console.error('Start recognition error', err);
-        // Might be already running
         try {
           recognitionRef.current.stop();
           setTimeout(() => {
-            recognitionRef.current?.start();
-            setIsListening(true);
-          }, 200);
+            try {
+              recognitionRef.current?.start();
+              setIsListening(true);
+            } catch (e) {
+              setError('Microphone is busy. Please try tapping again or typing your meal.');
+            }
+          }, 150);
         } catch (e) {
           setError('Failed to start microphone. Please try typing instead.');
         }
@@ -108,7 +116,7 @@ export const VoiceFoodInput = ({ onFoodFound, onClose }) => {
     setError(null);
 
     try {
-      const res = await fetch('/api/ai/parse-voice', {
+      const res = await fetch(`${apiBase}/api/ai/parse-voice`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -29,8 +29,8 @@ const AppContent = () => {
 
   // Reminders Worker
   useEffect(() => {
-    if (!user?.profile?.reminders?.length || !('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
+    if (!user?.profile?.reminders?.length || typeof window === 'undefined' || !('Notification' in window)) return;
+    if (window.Notification.permission !== 'granted') return;
 
     const checkReminders = () => {
       const now = new Date();
@@ -43,7 +43,7 @@ const AppContent = () => {
       
       if (activeReminders.length > 0) {
         activeReminders.forEach(reminder => {
-          new Notification('Caliber Reminder', {
+          new window.Notification('Caliber Reminder', {
             body: reminder.message || 'Time to check in with Caliber!',
             icon: '/icon.png' // assuming there's an icon, or it defaults
           });
