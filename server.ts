@@ -38,7 +38,7 @@ import {
 initDb();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Enable CORS for APK, TWA, and external browsers
 app.use((req, res, next) => {
