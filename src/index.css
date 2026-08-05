@@ -17,6 +17,13 @@
 }
 
 /* Base resets */
+html, body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 body {
   font-family: var(--font-sans);
   @apply bg-brand-bg text-slate-700 dark:bg-slate-900 dark:text-slate-300;

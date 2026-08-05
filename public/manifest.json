@@ -1,7 +1,7 @@
 {
   "background_color": "#0f172a",
   "dir": "ltr",
-  "display": "standalone",
+  "display": "fullscreen",
   "name": "Caliber — Smart Nutrition & Calorie Tracker",
   "orientation": "portrait",
   "scope": "/",

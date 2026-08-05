@@ -8,7 +8,7 @@ import { ExerciseLogger } from './components/ExerciseLogger';
 import { Trends } from './components/Trends';
 import { Settings } from './components/Settings';
 import { OfflineSyncBanner } from './components/OfflineSyncBanner';
-import { Apple, PlusCircle, Dumbbell, BarChart3, Settings as SettingsIcon, ShieldCheck } from 'lucide-react';
+import { Apple, PlusCircle, Dumbbell, BarChart3, Settings as SettingsIcon, ShieldCheck, Maximize2, Minimize2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from './assets/images/caliber_app_icon_1785420177978.jpg';
 
@@ -16,7 +16,60 @@ import logo from './assets/images/caliber_app_icon_1785420177978.jpg';
 const AppContent = () => {
   const { token, user, initialized } = useApp();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const lastTriggeredMinuteRef = useRef(null);
+
+  // Fullscreen & PWA Install Listener
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || (document).webkitFullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement && !(document).webkitFullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if ((document.documentElement).webkitRequestFullscreen) {
+          (document.documentElement).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document).webkitExitFullscreen) {
+          (document).webkitExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Fullscreen request failed:', err);
+    }
+  };
+
+  const handleInstallApp = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setDeferredInstallPrompt(null);
+      }
+    }
+  };
 
   // Dark Mode effect
   useEffect(() => {
@@ -120,12 +173,45 @@ const AppContent = () => {
           </div>
         </div>
 
-        {user && (
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Active Intake</span>
-            <span className="text-xs font-bold text-neutral-dark dark:text-slate-200">{user.profile?.name || user.email?.split('@')[0]}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {deferredInstallPrompt && (
+            <button
+              id="install-pwa-header-btn"
+              onClick={handleInstallApp}
+              title="Install App (Run without Address Bar)"
+              className="flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-lg text-[10px] font-bold transition"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Install</span>
+            </button>
+          )}
+
+          <button
+            id="toggle-fullscreen-btn"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Hide Browser Address Bar (Fullscreen)"}
+            className="flex items-center gap-1 p-1.5 px-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:text-primary hover:bg-primary/10 transition text-[10px] font-medium"
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Exit</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Hide Bar</span>
+              </>
+            )}
+          </button>
+
+          {user && (
+            <div className="text-right pl-1">
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Active Intake</span>
+              <span className="text-xs font-bold text-neutral-dark dark:text-slate-200">{user.profile?.name || user.email?.split('@')[0]}</span>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Primary views content stage */}
