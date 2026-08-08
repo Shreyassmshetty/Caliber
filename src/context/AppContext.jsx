@@ -39,6 +39,22 @@ export const AppProvider = ({ children }) => {
   const [selectedDate, setSelectedDateState] = useState(getLocalDateString());
   const [foodEntries, setFoodEntries] = useState([]);
   const [exercises, setExercises] = useState([]);
+  const [allFoodEntries, setAllFoodEntries] = useState(() => {
+    try {
+      const cached = localStorage.getItem('caliber_all_food');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [allExercises, setAllExercises] = useState(() => {
+    try {
+      const cached = localStorage.getItem('caliber_all_exercises');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [waterLog, setWaterLog] = useState(null);
   const [customMeals, setCustomMeals] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -122,10 +138,58 @@ export const AppProvider = ({ children }) => {
     setUser(null);
     setFoodEntries([]);
     setExercises([]);
+    setAllFoodEntries([]);
+    setAllExercises([]);
     setWaterLog(null);
     setCustomMeals([]);
     setError(null);
   };
+
+  const fetchAllHistory = useCallback(async () => {
+    if (!token) return;
+    if (!effectiveOnline) {
+      try {
+        const cachedFood = localStorage.getItem('caliber_all_food');
+        if (cachedFood) setAllFoodEntries(JSON.parse(cachedFood));
+        const cachedEx = localStorage.getItem('caliber_all_exercises');
+        if (cachedEx) setAllExercises(JSON.parse(cachedEx));
+      } catch (e) {
+        console.error("Error reading cached history:", e);
+      }
+      return;
+    }
+
+    try {
+      const [foodRes, exRes] = await Promise.all([
+        fetch(`${apiBase}/api/food/entries`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${apiBase}/api/exercises`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      if (foodRes.ok) {
+        const foodData = await foodRes.json();
+        setAllFoodEntries(foodData || []);
+        localStorage.setItem('caliber_all_food', JSON.stringify(foodData || []));
+      }
+
+      if (exRes.ok) {
+        const exData = await exRes.json();
+        setAllExercises(exData || []);
+        localStorage.setItem('caliber_all_exercises', JSON.stringify(exData || []));
+      }
+    } catch (err) {
+      console.warn("Failed to fetch all history from server, using local cache", err);
+      try {
+        const cachedFood = localStorage.getItem('caliber_all_food');
+        if (cachedFood) setAllFoodEntries(JSON.parse(cachedFood));
+        const cachedEx = localStorage.getItem('caliber_all_exercises');
+        if (cachedEx) setAllExercises(JSON.parse(cachedEx));
+      } catch (e) {}
+    }
+  }, [token, apiBase, effectiveOnline]);
 
   const fetchCustomMeals = async (authToken) => {
     if (!effectiveOnline) {
@@ -192,6 +256,29 @@ export const AppProvider = ({ children }) => {
       setFoodEntries(foodData);
       setExercises(exerciseData);
       setWaterLog(waterData);
+
+      // Merge into allFoodEntries and allExercises
+      if (Array.isArray(foodData) && foodData.length > 0) {
+        setAllFoodEntries(prev => {
+          const map = new Map();
+          prev.forEach(item => map.set(item.id || `${item.foodName}_${item.loggedAt}`, item));
+          foodData.forEach(item => map.set(item.id || `${item.foodName}_${item.loggedAt}`, item));
+          const updated = Array.from(map.values());
+          try { localStorage.setItem('caliber_all_food', JSON.stringify(updated)); } catch(e){}
+          return updated;
+        });
+      }
+
+      if (Array.isArray(exerciseData) && exerciseData.length > 0) {
+        setAllExercises(prev => {
+          const map = new Map();
+          prev.forEach(item => map.set(item.id || `${item.activityType}_${item.loggedAt}`, item));
+          exerciseData.forEach(item => map.set(item.id || `${item.activityType}_${item.loggedAt}`, item));
+          const updated = Array.from(map.values());
+          try { localStorage.setItem('caliber_all_exercises', JSON.stringify(updated)); } catch(e){}
+          return updated;
+        });
+      }
 
       localStorage.setItem(`caliber_day_${dateStr}`, JSON.stringify({ foodData, exerciseData, waterData }));
     } catch (err) {
@@ -430,6 +517,7 @@ export const AppProvider = ({ children }) => {
           const userData = await res.json();
           setUser(userData);
           await fetchCustomMeals(token);
+          await fetchAllHistory();
         } else {
           logout();
         }
@@ -570,6 +658,11 @@ export const AppProvider = ({ children }) => {
         if (food.loggedAt.startsWith(selectedDate)) {
           setFoodEntries(prev => [...prev, newEntry]);
         }
+        setAllFoodEntries(prev => {
+          const updated = [...prev.filter(e => e.id !== newEntry.id), newEntry];
+          try { localStorage.setItem('caliber_all_food', JSON.stringify(updated)); } catch(e){}
+          return updated;
+        });
         return true;
       }
       return false;
@@ -599,8 +692,13 @@ export const AppProvider = ({ children }) => {
   const deleteFoodLog = async (id) => {
     if (!token) return false;
 
-    const target = foodEntries.find(e => e.id === id);
+    const target = foodEntries.find(e => e.id === id) || allFoodEntries.find(e => e.id === id);
     setFoodEntries(prev => prev.filter(e => e.id !== id));
+    setAllFoodEntries(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      try { localStorage.setItem('caliber_all_food', JSON.stringify(updated)); } catch(e){}
+      return updated;
+    });
 
     if (!effectiveOnline) {
       if (id.startsWith('offline_')) {
@@ -674,6 +772,11 @@ export const AppProvider = ({ children }) => {
         if (exercise.loggedAt.startsWith(selectedDate)) {
           setExercises(prev => [...prev, newEx]);
         }
+        setAllExercises(prev => {
+          const updated = [...prev.filter(e => e.id !== newEx.id), newEx];
+          try { localStorage.setItem('caliber_all_exercises', JSON.stringify(updated)); } catch(e){}
+          return updated;
+        });
         return true;
       }
       return false;
@@ -683,6 +786,7 @@ export const AppProvider = ({ children }) => {
       if (exercise.loggedAt.startsWith(selectedDate)) {
         setExercises(prev => [...prev, newEx]);
       }
+      setAllExercises(prev => [...prev, newEx]);
       setPendingQueue(prev => [...prev, {
         id: `sync_ex_${Date.now()}`,
         type: 'LOG_EXERCISE',
@@ -698,8 +802,13 @@ export const AppProvider = ({ children }) => {
   const deleteExerciseLog = async (id) => {
     if (!token) return false;
 
-    const target = exercises.find(e => e.id === id);
+    const target = exercises.find(e => e.id === id) || allExercises.find(e => e.id === id);
     setExercises(prev => prev.filter(e => e.id !== id));
+    setAllExercises(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      try { localStorage.setItem('caliber_all_exercises', JSON.stringify(updated)); } catch(e){}
+      return updated;
+    });
 
     if (!effectiveOnline) {
       if (id.startsWith('offline_')) {
@@ -877,6 +986,8 @@ export const AppProvider = ({ children }) => {
       selectedDate,
       foodEntries,
       exercises,
+      allFoodEntries,
+      allExercises,
       waterLog,
       customMeals,
       loading,
@@ -902,6 +1013,7 @@ export const AppProvider = ({ children }) => {
       updateProfile,
       setSelectedDate,
       fetchDayData,
+      fetchAllHistory,
       logFood,
       deleteFoodLog,
       logExercise,
