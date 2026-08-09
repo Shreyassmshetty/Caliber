@@ -622,6 +622,7 @@ app.get("/api/food/search", async (req, res) => {
           const protein = getNutrient('203') || getNutrient('Protein') || getNutrient('1003') || 0;
           const carbs = getNutrient('205') || getNutrient('Carbohydrate') || getNutrient('1005') || 0;
           const fat = getNutrient('204') || getNutrient('Total lipid') || getNutrient('1004') || 0;
+          const sugar = getNutrient('269') || getNutrient('Sugars') || 0;
 
           // Build elegant display name
           let servingSize = "100g";
@@ -640,6 +641,7 @@ app.get("/api/food/search", async (req, res) => {
             protein: parseFloat(protein.toFixed(1)),
             carbs: parseFloat(carbs.toFixed(1)),
             fat: parseFloat(fat.toFixed(1)),
+            sugar: parseFloat(sugar.toFixed(1)),
             servingSize,
             brandName: food.brandName || null,
             source: 'USDA FDC'
@@ -676,7 +678,7 @@ app.get("/api/food/entries", authenticateToken, async (req, res) => {
 
 // Log Food Entry
 app.post("/api/food/log", authenticateToken, async (req, res) => {
-  const { foodName, calories, protein, carbs, fat, servingSize, quantity, mealType, loggedAt } = req.body;
+  const { foodName, calories, protein, carbs, fat, sugar, servingSize, quantity, mealType, loggedAt } = req.body;
 
   if (!foodName || calories === undefined || mealType === undefined) {
     res.status(400).json({ error: "Food name, calories, and meal category are required" });
@@ -691,6 +693,7 @@ app.post("/api/food/log", authenticateToken, async (req, res) => {
     protein: Number(protein || 0),
     carbs: Number(carbs || 0),
     fat: Number(fat || 0),
+    sugar: Number(sugar || 0),
     servingSize: servingSize || "1 serving",
     quantity: Number(quantity || 1),
     mealType,
@@ -876,7 +879,7 @@ app.post("/api/ai/analyze", authenticateToken, async (req, res) => {
     };
 
     const textPart = {
-      text: `Identify the food or meal in this image. Estimate its macronutrient values (protein in grams, carbs in grams, fat in grams), total calories (kcal), a descriptive food name, and standard serving size.`
+      text: `Identify the food or meal in this image. Estimate its macronutrient values (protein in grams, carbs in grams, fat in grams, sugar in grams), total calories (kcal), a descriptive food name, and standard serving size.`
     };
 
     const response = await ai.models.generateContent({
@@ -892,9 +895,10 @@ app.post("/api/ai/analyze", authenticateToken, async (req, res) => {
             protein: { type: Type.NUMBER, description: "Estimated protein in grams" },
             carbs: { type: Type.NUMBER, description: "Estimated carbs in grams" },
             fat: { type: Type.NUMBER, description: "Estimated fat in grams" },
+            sugar: { type: Type.NUMBER, description: "Estimated sugar in grams" },
             servingSize: { type: Type.STRING, description: "Serving size description" }
           },
-          required: ["foodName", "calories", "protein", "carbs", "fat", "servingSize"]
+          required: ["foodName", "calories", "protein", "carbs", "fat", "sugar", "servingSize"]
         }
       }
     });
@@ -916,6 +920,7 @@ app.post("/api/ai/analyze", authenticateToken, async (req, res) => {
       protein: 25,
       carbs: 45,
       fat: 15,
+      sugar: 5,
       servingSize: "1 portion",
       isFallback: true,
       quotaExceeded: true,
@@ -941,6 +946,7 @@ app.post("/api/ai/parse-voice", authenticateToken, async (req, res) => {
       protein: 22,
       carbs: 48,
       fat: 14,
+      sugar: 6,
       servingSize: "1 portion",
       isFallback: true
     });
@@ -960,7 +966,7 @@ app.post("/api/ai/parse-voice", authenticateToken, async (req, res) => {
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents: `You are an expert nutritionist and meal analyzer. Analyze this description of a meal or food item: "${textPrompt.trim()}".
-Estimate the macronutrients (protein in grams, carbs in grams, fat in grams), total calories (kcal), a clean descriptive food name, and serving size.`,
+Estimate the macronutrients (protein in grams, carbs in grams, fat in grams, sugar in grams), total calories (kcal), a clean descriptive food name, and serving size.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -971,9 +977,10 @@ Estimate the macronutrients (protein in grams, carbs in grams, fat in grams), to
             protein: { type: Type.NUMBER, description: "Protein in grams" },
             carbs: { type: Type.NUMBER, description: "Carbohydrates in grams" },
             fat: { type: Type.NUMBER, description: "Fat in grams" },
+            sugar: { type: Type.NUMBER, description: "Sugar in grams" },
             servingSize: { type: Type.STRING, description: "Serving size description" }
           },
-          required: ["foodName", "calories", "protein", "carbs", "fat", "servingSize"]
+          required: ["foodName", "calories", "protein", "carbs", "fat", "sugar", "servingSize"]
         }
       }
     });

@@ -28,6 +28,7 @@ export const FoodLogger = () => {
   const [manualCalories, setManualCalories] = useState('');
   const [manualProtein, setManualProtein] = useState('');
   const [manualCarbs, setManualCarbs] = useState('');
+  const [manualSugar, setManualSugar] = useState('');
   const [manualFat, setManualFat] = useState('');
   const [manualServing, setManualServing] = useState('1 serving');
   const [manualCategory, setManualCategory] = useState('breakfast');
@@ -90,6 +91,7 @@ export const FoodLogger = () => {
       protein: food.protein,
       carbs: food.carbs,
       fat: food.fat,
+      sugar: food.sugar || 0,
       servingSize: food.servingSize
     });
     setLogQuantity(1);
@@ -102,9 +104,10 @@ export const FoodLogger = () => {
     const finalLogged = {
       foodName: selectedFood.foodName,
       calories: Number(selectedFood.calories),
-      protein: Number(selectedFood.protein),
-      carbs: Number(selectedFood.carbs),
-      fat: Number(selectedFood.fat),
+      protein: Number(selectedFood.protein || 0),
+      carbs: Number(selectedFood.carbs || 0),
+      fat: Number(selectedFood.fat || 0),
+      sugar: Number(selectedFood.sugar || 0),
       servingSize: customServing || selectedFood.servingSize,
       quantity: Number(logQuantity),
       mealType: logMealType,
@@ -131,6 +134,7 @@ export const FoodLogger = () => {
       calories: Number(manualCalories),
       protein: Number(manualProtein || 0),
       carbs: Number(manualCarbs || 0),
+      sugar: Number(manualSugar || 0),
       fat: Number(manualFat || 0),
       servingSize: manualServing || "1 serving",
       quantity: 1,
@@ -146,6 +150,7 @@ export const FoodLogger = () => {
       setManualCalories('');
       setManualProtein('');
       setManualCarbs('');
+      setManualSugar('');
       setManualFat('');
       setManualServing('1 serving');
     }
@@ -495,22 +500,26 @@ export const FoodLogger = () => {
           </div>
 
           {/* Quick macro brief */}
-          <div className="grid grid-cols-4 gap-2 bg-gray-50 p-2.5 rounded-xl text-center text-[11px]">
+          <div className="grid grid-cols-5 gap-1.5 bg-gray-50 p-2.5 rounded-xl text-center text-[11px]">
             <div>
               <span className="text-[9px] text-gray-400 block uppercase font-medium">Calories</span>
               <span className="font-bold text-gray-700">{Math.round(selectedFood.calories * logQuantity)} kcal</span>
             </div>
             <div>
               <span className="text-[9px] text-gray-400 block uppercase font-medium">Protein</span>
-              <span className="font-bold text-emerald-600">{Math.round(selectedFood.protein * logQuantity)}g</span>
+              <span className="font-bold text-emerald-600">{Math.round((selectedFood.protein || 0) * logQuantity)}g</span>
             </div>
             <div>
               <span className="text-[9px] text-gray-400 block uppercase font-medium">Carbs</span>
-              <span className="font-bold text-amber-600">{Math.round(selectedFood.carbs * logQuantity)}g</span>
+              <span className="font-bold text-amber-600">{Math.round((selectedFood.carbs || 0) * logQuantity)}g</span>
+            </div>
+            <div>
+              <span className="text-[9px] text-gray-400 block uppercase font-medium">Sugar</span>
+              <span className="font-bold text-pink-600">{Math.round((selectedFood.sugar || 0) * logQuantity)}g</span>
             </div>
             <div>
               <span className="text-[9px] text-gray-400 block uppercase font-medium">Fat</span>
-              <span className="font-bold text-rose-500">{Math.round(selectedFood.fat * logQuantity)}g</span>
+              <span className="font-bold text-rose-500">{Math.round((selectedFood.fat || 0) * logQuantity)}g</span>
             </div>
           </div>
 
@@ -616,7 +625,7 @@ export const FoodLogger = () => {
             </div>
 
             {/* Macros group */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <div>
                 <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Protein (g)</label>
                 <input
@@ -624,7 +633,7 @@ export const FoodLogger = () => {
                   placeholder="Optional"
                   value={manualProtein}
                   onChange={(e) => setManualProtein(e.target.value)}
-                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none text-center"
+                  className="w-full px-2 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none text-center"
                 />
               </div>
               <div>
@@ -634,7 +643,17 @@ export const FoodLogger = () => {
                   placeholder="Optional"
                   value={manualCarbs}
                   onChange={(e) => setManualCarbs(e.target.value)}
-                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none text-center"
+                  className="w-full px-2 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none text-center"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Sugar (g)</label>
+                <input
+                  type="number"
+                  placeholder="Optional"
+                  value={manualSugar}
+                  onChange={(e) => setManualSugar(e.target.value)}
+                  className="w-full px-2 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none text-center"
                 />
               </div>
               <div>
@@ -644,7 +663,7 @@ export const FoodLogger = () => {
                   placeholder="Optional"
                   value={manualFat}
                   onChange={(e) => setManualFat(e.target.value)}
-                  className="w-full px-3 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none text-center"
+                  className="w-full px-2 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none text-center"
                 />
               </div>
             </div>

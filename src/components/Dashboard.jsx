@@ -35,6 +35,7 @@ export const Dashboard = ({ setActiveTab }) => {
   const totalProtein = foodEntries.reduce((sum, item) => sum + (item.protein * item.quantity), 0);
   const totalCarbs = foodEntries.reduce((sum, item) => sum + (item.carbs * item.quantity), 0);
   const totalFat = foodEntries.reduce((sum, item) => sum + (item.fat * item.quantity), 0);
+  const totalSugar = foodEntries.reduce((sum, item) => sum + ((item.sugar || 0) * item.quantity), 0);
 
   // Target macros in grams
   const targetProteinGrams = Math.round((calorieTarget * (proteinPct / 100)) / 4);
@@ -64,7 +65,14 @@ export const Dashboard = ({ setActiveTab }) => {
 
   // Meal lists helper
   const renderMealSection = (title, category, icon) => {
-    const meals = foodEntries.filter(item => item.mealType === category);
+    const meals = foodEntries.filter(item => {
+      const type = (item.mealType || '').toLowerCase();
+      const cat = category.toLowerCase();
+      if (cat === 'snacks') {
+        return type === 'snack' || type === 'snacks';
+      }
+      return type === cat;
+    });
     const categoryCalories = meals.reduce((sum, item) => sum + (item.calories * item.quantity), 0);
 
     return (
@@ -86,7 +94,7 @@ export const Dashboard = ({ setActiveTab }) => {
                 <div>
                   <span className="font-medium text-gray-800">{meal.foodName}</span>
                   <span className="text-[10px] text-gray-400 block">
-                    {meal.quantity} × {meal.servingSize} • P:{Math.round(meal.protein)}g C:{Math.round(meal.carbs)}g F:{Math.round(meal.fat)}g
+                    {meal.quantity} × {meal.servingSize} • P:{Math.round(meal.protein)}g C:{Math.round(meal.carbs)}g F:{Math.round(meal.fat)}g S:{Math.round(meal.sugar || 0)}g
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -302,6 +310,24 @@ export const Dashboard = ({ setActiveTab }) => {
               <div 
                 className="bg-rose-400 h-2 rounded-full transition-all" 
                 style={{ width: `${Math.min(100, (totalFat / (targetFatGrams || 1)) * 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Sugar */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-semibold text-gray-600 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-pink-500"></span> Sugar
+              </span>
+              <span className="text-gray-400">
+                <strong className="text-gray-700">{Math.round(totalSugar)}g</strong>
+              </span>
+            </div>
+            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+              <div 
+                className="bg-pink-500 h-2 rounded-full transition-all" 
+                style={{ width: `${Math.min(100, (totalSugar / 50) * 100)}%` }}
               />
             </div>
           </div>
