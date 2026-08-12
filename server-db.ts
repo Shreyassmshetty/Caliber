@@ -23,32 +23,109 @@ if (supabaseUrl && supabaseKey) {
   }
 }
 
-// Predefined fallback foods list
+// Predefined fallback foods list with emphasis on Indian & Global nutrition
 export const LOCAL_FOODS = [
+  // --- Indian Breads & Breakfast ---
+  { foodName: "Roti / Chapati (Whole Wheat)", calories: 80, protein: 3.1, carbs: 15.2, fat: 0.9, sugar: 0.2, servingSize: "1 roti (30g)" },
+  { foodName: "Plain Paratha", calories: 180, protein: 4.2, carbs: 24.5, fat: 7.5, sugar: 0.3, servingSize: "1 paratha (60g)" },
+  { foodName: "Aloo Paratha", calories: 230, protein: 5.1, carbs: 32.0, fat: 9.2, sugar: 0.8, servingSize: "1 paratha (100g)" },
+  { foodName: "Paneer Paratha", calories: 280, protein: 9.5, carbs: 28.0, fat: 14.8, sugar: 0.9, servingSize: "1 paratha (110g)" },
+  { foodName: "Plain Naan", calories: 260, protein: 8.0, carbs: 45.0, fat: 5.0, sugar: 2.1, servingSize: "1 naan (90g)" },
+  { foodName: "Garlic Butter Naan", calories: 310, protein: 8.5, carbs: 46.0, fat: 10.5, sugar: 2.2, servingSize: "1 naan (100g)" },
+  { foodName: "Puri / Poori", calories: 100, protein: 1.8, carbs: 12.5, fat: 5.0, sugar: 0.2, servingSize: "1 puri (25g)" },
+  { foodName: "Bhatura", calories: 290, protein: 6.5, carbs: 40.0, fat: 12.0, sugar: 1.5, servingSize: "1 bhatura (90g)" },
+  { foodName: "Plain Dosa", calories: 133, protein: 2.8, carbs: 22.6, fat: 3.7, sugar: 0.2, servingSize: "1 dosa (80g)" },
+  { foodName: "Masala Dosa", calories: 250, protein: 5.2, carbs: 38.0, fat: 8.8, sugar: 1.1, servingSize: "1 dosa (150g)" },
+  { foodName: "Rava Dosa", calories: 180, protein: 3.8, carbs: 28.0, fat: 6.0, sugar: 0.5, servingSize: "1 dosa (100g)" },
+  { foodName: "Steamed Idli", calories: 58, protein: 2.0, carbs: 12.0, fat: 0.2, sugar: 0.1, servingSize: "1 idli (40g)" },
+  { foodName: "Uttapam (Onion Tomato)", calories: 190, protein: 4.8, carbs: 32.0, fat: 4.8, sugar: 1.8, servingSize: "1 uttapam (120g)" },
+  { foodName: "Appam", calories: 120, protein: 2.1, carbs: 23.0, fat: 2.0, sugar: 1.0, servingSize: "1 appam (75g)" },
+  { foodName: "Poha (Flattened Rice)", calories: 180, protein: 3.2, carbs: 31.0, fat: 5.2, sugar: 1.5, servingSize: "1 bowl (150g)" },
+  { foodName: "Upma (Rava)", calories: 195, protein: 4.5, carbs: 30.0, fat: 6.5, sugar: 1.2, servingSize: "1 bowl (150g)" },
+  { foodName: "Thepla (Methi)", calories: 120, protein: 3.0, carbs: 18.0, fat: 4.2, sugar: 0.5, servingSize: "1 thepla (45g)" },
+  { foodName: "Sabudana Khichdi", calories: 240, protein: 2.5, carbs: 42.0, fat: 7.2, sugar: 0.8, servingSize: "1 bowl (150g)" },
+
+  // --- Indian Dals, Curries & Vegetables ---
+  { foodName: "Dal Tadka (Yellow Lentils)", calories: 150, protein: 7.5, carbs: 20.0, fat: 4.5, sugar: 1.0, servingSize: "1 cup (200g)" },
+  { foodName: "Dal Makhani", calories: 260, protein: 9.0, carbs: 24.0, fat: 14.0, sugar: 2.1, servingSize: "1 cup (200g)" },
+  { foodName: "Chana Masala / Chole", calories: 220, protein: 9.8, carbs: 32.0, fat: 6.5, sugar: 2.5, servingSize: "1 cup (200g)" },
+  { foodName: "Rajma Masala (Kidney Beans)", calories: 210, protein: 9.2, carbs: 30.0, fat: 5.8, sugar: 2.2, servingSize: "1 cup (200g)" },
+  { foodName: "Paneer Butter Masala", calories: 340, protein: 12.5, carbs: 14.0, fat: 26.0, sugar: 4.2, servingSize: "1 cup (200g)" },
+  { foodName: "Palak Paneer", calories: 230, protein: 11.0, carbs: 9.0, fat: 17.0, sugar: 2.0, servingSize: "1 cup (200g)" },
+  { foodName: "Kadai Paneer", calories: 290, protein: 13.0, carbs: 11.0, fat: 22.0, sugar: 3.0, servingSize: "1 cup (200g)" },
+  { foodName: "Shahi Paneer", calories: 320, protein: 11.5, carbs: 15.0, fat: 24.0, sugar: 4.8, servingSize: "1 cup (200g)" },
+  { foodName: "Aloo Gobi", calories: 160, protein: 3.8, carbs: 22.0, fat: 7.0, sugar: 3.1, servingSize: "1 cup (180g)" },
+  { foodName: "Bhindi Masala (Okra)", calories: 130, protein: 3.0, carbs: 12.0, fat: 8.0, sugar: 2.4, servingSize: "1 cup (150g)" },
+  { foodName: "Baingan Bharta (Eggplant)", calories: 140, protein: 2.8, carbs: 14.0, fat: 8.5, sugar: 4.0, servingSize: "1 cup (180g)" },
+  { foodName: "Mix Veg Curry", calories: 150, protein: 3.5, carbs: 18.0, fat: 7.5, sugar: 3.5, servingSize: "1 cup (200g)" },
+  { foodName: "Sambar", calories: 110, protein: 4.5, carbs: 17.0, fat: 2.8, sugar: 2.5, servingSize: "1 cup (200g)" },
+  { foodName: "Rasam", calories: 60, protein: 1.5, carbs: 9.0, fat: 2.0, sugar: 1.5, servingSize: "1 cup (200g)" },
+  { foodName: "Kadhi Pakora", calories: 210, protein: 6.2, carbs: 21.0, fat: 11.5, sugar: 3.0, servingSize: "1 cup (200g)" },
+
+  // --- Indian Rice & Biryani ---
+  { foodName: "Chicken Biryani", calories: 360, protein: 22.0, carbs: 42.0, fat: 11.5, sugar: 1.2, servingSize: "1 plate (300g)" },
+  { foodName: "Mutton Biryani", calories: 420, protein: 24.0, carbs: 44.0, fat: 17.0, sugar: 1.5, servingSize: "1 plate (300g)" },
+  { foodName: "Veg Biryani", calories: 280, protein: 6.5, carbs: 48.0, fat: 7.5, sugar: 2.0, servingSize: "1 plate (280g)" },
+  { foodName: "Egg Biryani", calories: 320, protein: 14.0, carbs: 43.0, fat: 10.0, sugar: 1.2, servingSize: "1 plate (290g)" },
+  { foodName: "Jeera Rice", calories: 210, protein: 4.0, carbs: 42.0, fat: 3.2, sugar: 0.1, servingSize: "1 cup (180g)" },
+  { foodName: "Curd Rice", calories: 200, protein: 5.5, carbs: 32.0, fat: 5.8, sugar: 3.0, servingSize: "1 cup (200g)" },
+  { foodName: "Khichdi (Moong Dal)", calories: 190, protein: 6.8, carbs: 34.0, fat: 3.5, sugar: 0.8, servingSize: "1 cup (200g)" },
+  { foodName: "Lemon Rice", calories: 230, protein: 4.2, carbs: 41.0, fat: 6.0, sugar: 0.5, servingSize: "1 cup (180g)" },
+  { foodName: "Basmati Rice (Cooked)", calories: 205, protein: 4.3, carbs: 44.5, fat: 0.4, sugar: 0.1, servingSize: "1 cup (158g)" },
+
+  // --- Indian Non-Veg Dishes ---
+  { foodName: "Butter Chicken (Murgh Makhani)", calories: 380, protein: 28.0, carbs: 12.0, fat: 24.0, sugar: 4.5, servingSize: "1 cup (220g)" },
+  { foodName: "Chicken Tikka Masala", calories: 340, protein: 29.0, carbs: 10.0, fat: 20.0, sugar: 3.8, servingSize: "1 cup (220g)" },
+  { foodName: "Home-style Chicken Curry", calories: 260, protein: 26.0, carbs: 8.0, fat: 14.0, sugar: 1.8, servingSize: "1 cup (220g)" },
+  { foodName: "Tandoori Chicken", calories: 220, protein: 30.0, carbs: 3.0, fat: 9.5, sugar: 0.5, servingSize: "1 leg piece (150g)" },
+  { foodName: "Chicken Tikka (Dry)", calories: 210, protein: 32.0, carbs: 4.0, fat: 7.2, sugar: 0.8, servingSize: "6 pieces (150g)" },
+  { foodName: "Mutton Curry / Rogan Josh", calories: 350, protein: 27.0, carbs: 7.0, fat: 24.0, sugar: 1.2, servingSize: "1 cup (220g)" },
+  { foodName: "Egg Curry (2 Eggs)", calories: 240, protein: 14.5, carbs: 8.0, fat: 16.5, sugar: 2.0, servingSize: "1 cup (200g)" },
+  { foodName: "Egg Bhurji (2 Eggs)", calories: 210, protein: 13.5, carbs: 4.0, fat: 15.0, sugar: 1.2, servingSize: "1 plate (140g)" },
+  { foodName: "Indian Fish Curry", calories: 220, protein: 24.0, carbs: 6.0, fat: 11.0, sugar: 1.0, servingSize: "1 cup (200g)" },
+  { foodName: "Fish Fry (Rava Fry)", calories: 250, protein: 23.0, carbs: 11.0, fat: 12.5, sugar: 0.2, servingSize: "1 fillet (130g)" },
+
+  // --- Indian Snacks & Street Food ---
+  { foodName: "Samosa (Potato)", calories: 262, protein: 3.5, carbs: 32.0, fat: 13.5, sugar: 1.8, servingSize: "1 samosa (90g)" },
+  { foodName: "Pav Bhaji", calories: 380, protein: 8.5, carbs: 54.0, fat: 15.0, sugar: 6.0, servingSize: "Bhaji + 2 Pavs (280g)" },
+  { foodName: "Vada Pav", calories: 290, protein: 6.0, carbs: 42.0, fat: 11.0, sugar: 3.0, servingSize: "1 vada pav (120g)" },
+  { foodName: "Medu Vada", calories: 150, protein: 4.0, carbs: 16.0, fat: 8.0, sugar: 0.2, servingSize: "1 vada (50g)" },
+  { foodName: "Khaman Dhokla", calories: 160, protein: 5.5, carbs: 26.0, fat: 4.0, sugar: 4.5, servingSize: "2 pieces (80g)" },
+  { foodName: "Pani Puri / Golgappa", calories: 180, protein: 2.5, carbs: 28.0, fat: 6.5, sugar: 2.0, servingSize: "6 puris (120g)" },
+  { foodName: "Bhel Puri", calories: 210, protein: 4.2, carbs: 36.0, fat: 5.8, sugar: 3.5, servingSize: "1 plate (150g)" },
+  { foodName: "Onion Pakora / Bhajji", calories: 220, protein: 4.0, carbs: 22.0, fat: 13.0, sugar: 2.0, servingSize: "4 pieces (100g)" },
+  { foodName: "Paneer Tikka (Grilled)", calories: 240, protein: 14.0, carbs: 7.0, fat: 17.0, sugar: 1.5, servingSize: "5 pieces (150g)" },
+
+  // --- Indian Sweets & Beverages ---
+  { foodName: "Gulab Jamun", calories: 150, protein: 2.2, carbs: 24.0, fat: 5.2, sugar: 18.0, servingSize: "1 piece (50g)" },
+  { foodName: "Rasgulla", calories: 125, protein: 2.8, carbs: 23.0, fat: 2.2, sugar: 17.5, servingSize: "1 piece (50g)" },
+  { foodName: "Rice Kheer / Payasam", calories: 220, protein: 5.5, carbs: 34.0, fat: 7.2, sugar: 22.0, servingSize: "1 cup (180g)" },
+  { foodName: "Gajar Ka Halwa", calories: 280, protein: 4.8, carbs: 38.0, fat: 12.5, sugar: 26.0, servingSize: "1 bowl (150g)" },
+  { foodName: "Moong Dal Halwa", calories: 320, protein: 6.0, carbs: 39.0, fat: 16.0, sugar: 24.0, servingSize: "1 bowl (120g)" },
+  { foodName: "Jalebi", calories: 180, protein: 1.0, carbs: 36.0, fat: 3.8, sugar: 28.0, servingSize: "2 pieces (50g)" },
+  { foodName: "Mango Lassi", calories: 210, protein: 5.2, carbs: 34.0, fat: 6.0, sugar: 28.0, servingSize: "1 glass (250ml)" },
+  { foodName: "Sweet Lassi", calories: 190, protein: 6.0, carbs: 28.0, fat: 6.2, sugar: 24.0, servingSize: "1 glass (250ml)" },
+  { foodName: "Masala Chaas / Spiced Buttermilk", calories: 45, protein: 2.5, carbs: 3.8, fat: 2.2, sugar: 3.5, servingSize: "1 glass (250ml)" },
+  { foodName: "Masala Chai (with Milk & Sugar)", calories: 90, protein: 2.8, carbs: 12.0, fat: 3.2, sugar: 10.0, servingSize: "1 cup (150ml)" },
+
+  // --- Indian Staples & Dairy ---
+  { foodName: "Paneer (Raw Cottage Cheese)", calories: 265, protein: 18.3, carbs: 1.2, fat: 20.8, sugar: 1.0, servingSize: "100g" },
+  { foodName: "Fresh Dahi / Curd", calories: 98, protein: 11.0, carbs: 3.4, fat: 4.3, sugar: 3.4, servingSize: "1 cup (200g)" },
+  { foodName: "Desi Ghee", calories: 112, protein: 0, carbs: 0, fat: 12.7, sugar: 0, servingSize: "1 tbsp (14g)" },
+
+  // --- Western & Global Basics ---
   { foodName: "Apple (medium)", calories: 95, protein: 0.5, carbs: 25, fat: 0.3, sugar: 19, servingSize: "1 medium (182g)" },
   { foodName: "Banana (medium)", calories: 105, protein: 1.3, carbs: 27, fat: 0.4, sugar: 14, servingSize: "1 medium (118g)" },
+  { foodName: "Orange (medium)", calories: 62, protein: 1.2, carbs: 15.4, fat: 0.2, sugar: 12.2, servingSize: "1 medium (131g)" },
+  { foodName: "Avocado (medium)", calories: 240, protein: 3.0, carbs: 12.0, fat: 22.0, sugar: 1.3, servingSize: "1 medium (150g)" },
   { foodName: "Chicken Breast (grilled)", calories: 165, protein: 31, carbs: 0, fat: 3.6, sugar: 0, servingSize: "100g" },
   { foodName: "Egg (large boiled)", calories: 78, protein: 6.3, carbs: 0.6, fat: 5.3, sugar: 0.6, servingSize: "1 large (50g)" },
-  { foodName: "White Rice (cooked)", calories: 205, protein: 4.2, carbs: 44.5, fat: 0.4, sugar: 0.1, servingSize: "1 cup (158g)" },
-  { foodName: "Brown Rice (cooked)", calories: 215, protein: 5.0, carbs: 44.8, fat: 1.8, sugar: 0.7, servingSize: "1 cup (195g)" },
-  { foodName: "Milk (2% fat)", calories: 122, protein: 8.1, carbs: 11.7, fat: 4.8, sugar: 12.3, servingSize: "1 cup (244g)" },
   { foodName: "Salmon Fillet (baked)", calories: 206, protein: 22.0, carbs: 0, fat: 12.4, sugar: 0, servingSize: "100g" },
-  { foodName: "Avocado (medium)", calories: 240, protein: 3.0, carbs: 12.0, fat: 22.0, sugar: 1.3, servingSize: "1 medium (150g)" },
   { foodName: "Oatmeal (cooked)", calories: 166, protein: 5.9, carbs: 28.1, fat: 3.6, sugar: 1.1, servingSize: "1 cup (234g)" },
-  { foodName: "Peanut Butter (creamy)", calories: 94, protein: 4.0, carbs: 3.1, fat: 8.1, sugar: 1.5, servingSize: "1 tbsp (16g)" },
-  { foodName: "Whole Wheat Bread", calories: 69, protein: 3.6, carbs: 11.8, fat: 0.9, sugar: 1.4, servingSize: "1 slice (28g)" },
-  { foodName: "Greek Yogurt (plain, non-fat)", calories: 80, protein: 15.5, carbs: 6.4, fat: 0.4, sugar: 6.0, servingSize: "1 container (150g)" },
   { foodName: "Broccoli (steamed)", calories: 54, protein: 3.7, carbs: 10.0, fat: 0.6, sugar: 2.2, servingSize: "1 cup (150g)" },
   { foodName: "Sweet Potato (baked)", calories: 103, protein: 2.0, carbs: 24.0, fat: 0.2, sugar: 7.4, servingSize: "1 medium (114g)" },
-  { foodName: "Olive Oil", calories: 119, protein: 0, carbs: 0, fat: 13.5, sugar: 0, servingSize: "1 tbsp (13.5g)" },
-  { foodName: "Ground Beef (lean 90/10)", calories: 200, protein: 20.0, carbs: 0, fat: 10.0, sugar: 0, servingSize: "100g" },
-  { foodName: "Tuna (canned in water)", calories: 116, protein: 26.0, carbs: 0, fat: 1.0, sugar: 0, servingSize: "100g" },
-  { foodName: "Pasta (cooked spaghetti)", calories: 200, protein: 7.1, carbs: 40.0, fat: 1.3, sugar: 0.8, servingSize: "1 cup (140g)" },
   { foodName: "Almonds (raw)", calories: 164, protein: 6.0, carbs: 6.1, fat: 14.1, sugar: 1.2, servingSize: "28g (23 nuts)" },
-  { foodName: "Protein Powder (Whey)", calories: 120, protein: 24.0, carbs: 3.0, fat: 1.5, sugar: 1.0, servingSize: "1 scoop (30g)" },
-  { foodName: "Orange (medium)", calories: 62, protein: 1.2, carbs: 15.4, fat: 0.2, sugar: 12.2, servingSize: "1 medium (131g)" },
-  { foodName: "Blueberries (raw)", calories: 84, protein: 1.1, carbs: 21.0, fat: 0.5, sugar: 14.7, servingSize: "1 cup (148g)" },
-  { foodName: "Spinach (raw)", calories: 7, protein: 0.9, carbs: 1.1, fat: 0.1, sugar: 0.1, servingSize: "1 cup (30g)" }
+  { foodName: "Whey Protein Powder", calories: 120, protein: 24.0, carbs: 3.0, fat: 1.5, sugar: 1.0, servingSize: "1 scoop (30g)" }
 ];
 
 // Ensure database file exists
@@ -194,6 +271,30 @@ export async function updateUserProfile(userId, profile) {
   }
 }
 
+function matchesDate(loggedAt, dateStr) {
+  if (!loggedAt || !dateStr) return false;
+  if (typeof loggedAt === 'string') {
+    if (loggedAt.startsWith(dateStr)) return true;
+    const match = loggedAt.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match && match[1] === dateStr) return true;
+  }
+  try {
+    const d = new Date(loggedAt);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      if (`${year}-${month}-${day}` === dateStr) return true;
+
+      const uYear = d.getUTCFullYear();
+      const uMonth = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const uDay = String(d.getUTCDate()).padStart(2, '0');
+      if (`${uYear}-${uMonth}-${uDay}` === dateStr) return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
 // 5. Get food entries
 export async function getFoodEntries(userId, dateStr) {
   if (dbSupabase) {
@@ -215,7 +316,7 @@ export async function getFoodEntries(userId, dateStr) {
           loggedAt: d.logged_at || d.loggedAt
         }));
         if (dateStr) {
-          entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
+          entries = entries.filter(e => e.loggedAt && matchesDate(e.loggedAt, dateStr));
         }
         return entries;
       }
@@ -226,7 +327,7 @@ export async function getFoodEntries(userId, dateStr) {
   const db = readDb();
   let entries = db.foodEntries.filter(entry => entry.userId === userId);
   if (dateStr) {
-    entries = entries.filter(entry => entry.loggedAt.startsWith(dateStr));
+    entries = entries.filter(entry => matchesDate(entry.loggedAt, dateStr));
   }
   return entries;
 }
@@ -301,7 +402,7 @@ export async function getExercises(userId, dateStr) {
           loggedAt: d.logged_at || d.loggedAt
         }));
         if (dateStr) {
-          entries = entries.filter(e => e.loggedAt && e.loggedAt.startsWith(dateStr));
+          entries = entries.filter(e => e.loggedAt && matchesDate(e.loggedAt, dateStr));
         }
         return entries;
       }
@@ -312,7 +413,7 @@ export async function getExercises(userId, dateStr) {
   const db = readDb();
   let entries = db.exercises.filter(e => e.userId === userId);
   if (dateStr) {
-    entries = entries.filter(e => e.loggedAt.startsWith(dateStr));
+    entries = entries.filter(e => matchesDate(e.loggedAt, dateStr));
   }
   return entries;
 }

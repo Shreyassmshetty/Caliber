@@ -9,6 +9,30 @@ export const getLocalDateString = (d = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+export const entryMatchesDate = (loggedAt, dateStr) => {
+  if (!loggedAt || !dateStr) return false;
+  if (typeof loggedAt === 'string') {
+    if (loggedAt.startsWith(dateStr)) return true;
+    const match = loggedAt.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match && match[1] === dateStr) return true;
+  }
+  try {
+    const d = new Date(loggedAt);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      if (`${year}-${month}-${day}` === dateStr) return true;
+
+      const uYear = d.getUTCFullYear();
+      const uMonth = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const uDay = String(d.getUTCDate()).padStart(2, '0');
+      if (`${uYear}-${uMonth}-${uDay}` === dateStr) return true;
+    }
+  } catch (e) {}
+  return false;
+};
+
 export const AppProvider = ({ children }) => {
   const apiBase = import.meta.env.VITE_API_BASE_URL || '';
   const [user, setUser] = useState(null);
@@ -253,8 +277,39 @@ export const AppProvider = ({ children }) => {
       });
       const waterData = waterRes.ok ? await waterRes.json() : null;
 
-      setFoodEntries(foodData);
-      setExercises(exerciseData);
+      // Preserve unsynced offline queue entries for this date so items never disappear before/during sync
+      const pendingFoodForDate = pendingQueue
+        .filter(item => item.type === 'LOG_FOOD' && entryMatchesDate(item.payload?.loggedAt, dateStr))
+        .map(item => ({
+          id: item.tempId || `offline_food_${item.id}`,
+          userId: user?.id || 'offline_user',
+          ...item.payload
+        }));
+
+      const mergedFoodData = Array.isArray(foodData) ? [...foodData] : [];
+      pendingFoodForDate.forEach(pf => {
+        if (!mergedFoodData.some(f => f.id === pf.id || (f.foodName === pf.foodName && f.mealType === pf.mealType))) {
+          mergedFoodData.push(pf);
+        }
+      });
+
+      const pendingExForDate = pendingQueue
+        .filter(item => item.type === 'LOG_EXERCISE' && entryMatchesDate(item.payload?.loggedAt, dateStr))
+        .map(item => ({
+          id: item.tempId || `offline_ex_${item.id}`,
+          userId: user?.id || 'offline_user',
+          ...item.payload
+        }));
+
+      const mergedExData = Array.isArray(exerciseData) ? [...exerciseData] : [];
+      pendingExForDate.forEach(pe => {
+        if (!mergedExData.some(e => e.id === pe.id || e.activityType === pe.activityType)) {
+          mergedExData.push(pe);
+        }
+      });
+
+      setFoodEntries(mergedFoodData);
+      setExercises(mergedExData);
       setWaterLog(waterData);
 
       // Merge into allFoodEntries and allExercises
@@ -421,9 +476,16 @@ export const AppProvider = ({ children }) => {
             },
             body: JSON.stringify(item.payload)
           });
-          success = res.ok;
+          if (res.ok) {
+            success = true;
+            const newEntry = await res.json();
+            if (newEntry && newEntry.id) {
+              setFoodEntries(prev => [...prev.filter(e => e.id !== item.tempId && !(typeof e.id === 'string' && e.id.startsWith('offline_') && e.foodName === newEntry.foodName)), newEntry]);
+              setAllFoodEntries(prev => [...prev.filter(e => e.id !== item.tempId && !(typeof e.id === 'string' && e.id.startsWith('offline_') && e.foodName === newEntry.foodName)), newEntry]);
+            }
+          }
         } else if (item.type === 'DELETE_FOOD') {
-          if (item.payload.id.startsWith('offline_')) {
+          if (item.payload?.id && typeof item.payload.id === 'string' && item.payload.id.startsWith('offline_')) {
             success = true;
           } else {
             const res = await fetch(`${apiBase}/api/food/log/${item.payload.id}`, {
@@ -441,9 +503,16 @@ export const AppProvider = ({ children }) => {
             },
             body: JSON.stringify(item.payload)
           });
-          success = res.ok;
+          if (res.ok) {
+            success = true;
+            const newEx = await res.json();
+            if (newEx && newEx.id) {
+              setExercises(prev => [...prev.filter(e => e.id !== item.tempId && !(typeof e.id === 'string' && e.id.startsWith('offline_') && e.activityType === newEx.activityType)), newEx]);
+              setAllExercises(prev => [...prev.filter(e => e.id !== item.tempId && !(typeof e.id === 'string' && e.id.startsWith('offline_') && e.activityType === newEx.activityType)), newEx]);
+            }
+          }
         } else if (item.type === 'DELETE_EXERCISE') {
-          if (item.payload.id.startsWith('offline_')) {
+          if (item.payload?.id && typeof item.payload.id === 'string' && item.payload.id.startsWith('offline_')) {
             success = true;
           } else {
             const res = await fetch(`${apiBase}/api/exercises/${item.payload.id}`, {
@@ -620,25 +689,43 @@ export const AppProvider = ({ children }) => {
   const logFood = async (food) => {
     if (!token) return false;
 
+    const timePart = new Date().toISOString().split('T')[1] || '12:00:00.000Z';
+    const entryLoggedAt = food.loggedAt || (selectedDate ? `${selectedDate}T${timePart}` : new Date().toISOString());
+    const foodWithDate = { ...food, loggedAt: entryLoggedAt };
+
     if (!effectiveOnline) {
       const tempId = `offline_food_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const newEntry= {
+      const newEntry = {
         id: tempId,
         userId: user?.id || 'offline_user',
-        ...food
+        ...foodWithDate
       };
 
-      if (food.loggedAt.startsWith(selectedDate)) {
-        setFoodEntries(prev => [...prev, newEntry]);
+      if (entryMatchesDate(foodWithDate.loggedAt, selectedDate)) {
+        setFoodEntries(prev => [...prev.filter(e => e.id !== tempId), newEntry]);
       }
+      setAllFoodEntries(prev => {
+        const updated = [...prev.filter(e => e.id !== tempId), newEntry];
+        try { localStorage.setItem('caliber_all_food', JSON.stringify(updated)); } catch(e){}
+        return updated;
+      });
+
+      try {
+        const cacheKey = `caliber_day_${selectedDate}`;
+        const cached = localStorage.getItem(cacheKey);
+        const parsed = cached ? JSON.parse(cached) : { foodData: [], exerciseData: [], waterData: null };
+        parsed.foodData = [...(parsed.foodData || []).filter(e => e.id !== tempId), newEntry];
+        localStorage.setItem(cacheKey, JSON.stringify(parsed));
+      } catch (e) {}
 
       setPendingQueue(prev => [...prev, {
         id: `sync_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         type: 'LOG_FOOD',
+        tempId: tempId,
         timestamp: new Date().toISOString(),
-        title: food.foodName,
-        subtitle: `${food.calories} kcal • ${food.mealType}`,
-        payload: food
+        title: foodWithDate.foodName,
+        subtitle: `${foodWithDate.calories} kcal • ${foodWithDate.mealType}`,
+        payload: foodWithDate
       }]);
       return true;
     }
@@ -650,13 +737,13 @@ export const AppProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(food)
+        body: JSON.stringify(foodWithDate)
       });
 
       if (res.ok) {
         const newEntry = await res.json();
-        if (food.loggedAt.startsWith(selectedDate)) {
-          setFoodEntries(prev => [...prev, newEntry]);
+        if (entryMatchesDate(newEntry.loggedAt || foodWithDate.loggedAt, selectedDate)) {
+          setFoodEntries(prev => [...prev.filter(e => e.id !== newEntry.id), newEntry]);
         }
         setAllFoodEntries(prev => {
           const updated = [...prev.filter(e => e.id !== newEntry.id), newEntry];
@@ -668,22 +755,23 @@ export const AppProvider = ({ children }) => {
       return false;
     } catch (err) {
       console.warn("Network error during logFood. Queueing offline item...");
-      const tempId = `offline_food_${Date.now()}`;
-      const newEntry= {
+      const tempId = `offline_food_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const newEntry = {
         id: tempId,
         userId: user?.id || 'offline_user',
-        ...food
+        ...foodWithDate
       };
-      if (food.loggedAt.startsWith(selectedDate)) {
-        setFoodEntries(prev => [...prev, newEntry]);
+      if (entryMatchesDate(foodWithDate.loggedAt, selectedDate)) {
+        setFoodEntries(prev => [...prev.filter(e => e.id !== tempId), newEntry]);
       }
       setPendingQueue(prev => [...prev, {
-        id: `sync_${Date.now()}`,
+        id: `sync_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         type: 'LOG_FOOD',
+        tempId: tempId,
         timestamp: new Date().toISOString(),
-        title: food.foodName,
-        subtitle: `${food.calories} kcal • ${food.mealType}`,
-        payload: food
+        title: foodWithDate.foodName,
+        subtitle: `${foodWithDate.calories} kcal • ${foodWithDate.mealType}`,
+        payload: foodWithDate
       }]);
       return true;
     }
@@ -700,17 +788,27 @@ export const AppProvider = ({ children }) => {
       return updated;
     });
 
-    if (!effectiveOnline) {
-      if (id.startsWith('offline_')) {
-        setPendingQueue(prev => prev.filter(item => !(item.type === 'LOG_FOOD' && item.payload.foodName === target?.foodName)));
+    try {
+      const cacheKey = `caliber_day_${selectedDate}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        parsed.foodData = (parsed.foodData || []).filter(e => e.id !== id);
+        localStorage.setItem(cacheKey, JSON.stringify(parsed));
+      }
+    } catch (e) {}
+
+    if (!effectiveOnline || (typeof id === 'string' && id.startsWith('offline_'))) {
+      if (typeof id === 'string' && id.startsWith('offline_')) {
+        setPendingQueue(prev => prev.filter(item => item.tempId !== id && item.payload?.id !== id && !(item.type === 'LOG_FOOD' && item.payload?.foodName === target?.foodName)));
       } else {
         setPendingQueue(prev => [...prev, {
           id: `sync_del_${Date.now()}`,
           type: 'DELETE_FOOD',
-        timestamp: new Date().toISOString(),
-        title: `Deleted: ${target?.foodName || 'Food Item'}`,
-        payload: { id }
-      }]);
+          timestamp: new Date().toISOString(),
+          title: `Deleted: ${target?.foodName || 'Food Item'}`,
+          payload: { id }
+        }]);
       }
       return true;
     }
@@ -736,23 +834,42 @@ export const AppProvider = ({ children }) => {
   const logExercise = async (exercise) => {
     if (!token) return false;
 
+    const timePart = new Date().toISOString().split('T')[1] || '12:00:00.000Z';
+    const entryLoggedAt = exercise.loggedAt || (selectedDate ? `${selectedDate}T${timePart}` : new Date().toISOString());
+    const exWithDate = { ...exercise, loggedAt: entryLoggedAt };
+
     if (!effectiveOnline) {
-      const tempId = `offline_ex_${Date.now()}`;
-      const newEx= {
+      const tempId = `offline_ex_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const newEx = {
         id: tempId,
         userId: user?.id || 'offline_user',
-        ...exercise
+        ...exWithDate
       };
-      if (exercise.loggedAt.startsWith(selectedDate)) {
-        setExercises(prev => [...prev, newEx]);
+      if (entryMatchesDate(exWithDate.loggedAt, selectedDate)) {
+        setExercises(prev => [...prev.filter(e => e.id !== tempId), newEx]);
       }
+      setAllExercises(prev => {
+        const updated = [...prev.filter(e => e.id !== tempId), newEx];
+        try { localStorage.setItem('caliber_all_exercises', JSON.stringify(updated)); } catch(e){}
+        return updated;
+      });
+
+      try {
+        const cacheKey = `caliber_day_${selectedDate}`;
+        const cached = localStorage.getItem(cacheKey);
+        const parsed = cached ? JSON.parse(cached) : { foodData: [], exerciseData: [], waterData: null };
+        parsed.exerciseData = [...(parsed.exerciseData || []).filter(e => e.id !== tempId), newEx];
+        localStorage.setItem(cacheKey, JSON.stringify(parsed));
+      } catch (e) {}
+
       setPendingQueue(prev => [...prev, {
-        id: `sync_ex_${Date.now()}`,
+        id: `sync_ex_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         type: 'LOG_EXERCISE',
+        tempId: tempId,
         timestamp: new Date().toISOString(),
-        title: exercise.activityType,
-        subtitle: `${exercise.caloriesBurned} kcal burned (${exercise.durationMinutes}m)`,
-        payload: exercise
+        title: exWithDate.activityType,
+        subtitle: `${exWithDate.caloriesBurned} kcal burned (${exWithDate.durationMinutes}m)`,
+        payload: exWithDate
       }]);
       return true;
     }
@@ -764,13 +881,13 @@ export const AppProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(exercise)
+        body: JSON.stringify(exWithDate)
       });
 
       if (res.ok) {
         const newEx = await res.json();
-        if (exercise.loggedAt.startsWith(selectedDate)) {
-          setExercises(prev => [...prev, newEx]);
+        if (entryMatchesDate(newEx.loggedAt || exWithDate.loggedAt, selectedDate)) {
+          setExercises(prev => [...prev.filter(e => e.id !== newEx.id), newEx]);
         }
         setAllExercises(prev => {
           const updated = [...prev.filter(e => e.id !== newEx.id), newEx];
@@ -781,19 +898,20 @@ export const AppProvider = ({ children }) => {
       }
       return false;
     } catch (err) {
-      const tempId = `offline_ex_${Date.now()}`;
-      const newEx= { id: tempId, userId: user?.id || 'offline_user', ...exercise };
-      if (exercise.loggedAt.startsWith(selectedDate)) {
-        setExercises(prev => [...prev, newEx]);
+      const tempId = `offline_ex_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const newEx = { id: tempId, userId: user?.id || 'offline_user', ...exWithDate };
+      if (entryMatchesDate(exWithDate.loggedAt, selectedDate)) {
+        setExercises(prev => [...prev.filter(e => e.id !== tempId), newEx]);
       }
-      setAllExercises(prev => [...prev, newEx]);
+      setAllExercises(prev => [...prev.filter(e => e.id !== tempId), newEx]);
       setPendingQueue(prev => [...prev, {
-        id: `sync_ex_${Date.now()}`,
+        id: `sync_ex_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         type: 'LOG_EXERCISE',
+        tempId: tempId,
         timestamp: new Date().toISOString(),
-        title: exercise.activityType,
-        subtitle: `${exercise.caloriesBurned} kcal burned`,
-        payload: exercise
+        title: exWithDate.activityType,
+        subtitle: `${exWithDate.caloriesBurned} kcal burned`,
+        payload: exWithDate
       }]);
       return true;
     }
@@ -810,17 +928,27 @@ export const AppProvider = ({ children }) => {
       return updated;
     });
 
-    if (!effectiveOnline) {
-      if (id.startsWith('offline_')) {
-        setPendingQueue(prev => prev.filter(item => !(item.type === 'LOG_EXERCISE' && item.payload.activityType === target?.activityType)));
+    try {
+      const cacheKey = `caliber_day_${selectedDate}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        parsed.exerciseData = (parsed.exerciseData || []).filter(e => e.id !== id);
+        localStorage.setItem(cacheKey, JSON.stringify(parsed));
+      }
+    } catch (e) {}
+
+    if (!effectiveOnline || (typeof id === 'string' && id.startsWith('offline_'))) {
+      if (typeof id === 'string' && id.startsWith('offline_')) {
+        setPendingQueue(prev => prev.filter(item => item.tempId !== id && item.payload?.id !== id && !(item.type === 'LOG_EXERCISE' && item.payload?.activityType === target?.activityType)));
       } else {
         setPendingQueue(prev => [...prev, {
           id: `sync_delex_${Date.now()}`,
           type: 'DELETE_EXERCISE',
-        timestamp: new Date().toISOString(),
-        title: `Deleted workout`,
-        payload: { id }
-      }]);
+          timestamp: new Date().toISOString(),
+          title: `Deleted workout`,
+          payload: { id }
+        }]);
       }
       return true;
     }

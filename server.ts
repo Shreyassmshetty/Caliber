@@ -575,6 +575,27 @@ app.post("/api/profile/update", authenticateToken, async (req, res) => {
 
 // ==================== FOOD LOGGING & SEARCH ENDPOINTS ====================
 
+// Helper to check if a food description or brand is Indian food
+function isIndianFoodItem(foodName: string, brandName?: string | null): boolean {
+  const text = `${foodName} ${brandName || ''}`.toLowerCase();
+  const indianKeywords = [
+    'indian', 'curry', 'tikka', 'masala', 'paneer', 'dal', 'daal', 'roti', 'naan',
+    'biryani', 'biriyani', 'dosa', 'dosai', 'idli', 'iddli', 'sambar', 'sambhar',
+    'chole', 'chana', 'rajma', 'poha', 'upma', 'samosa', 'paratha', 'parotta',
+    'bhatura', 'poori', 'puri', 'lassi', 'chai', 'tandoori', 'korma', 'vindaloo',
+    'halwa', 'khichdi', 'khichree', 'rasam', 'chapati', 'chapatti', 'uttapam',
+    'bhaji', 'pav bhaji', 'gobi', 'aloo', 'matar', 'palak', 'saag', 'sag',
+    'ghee', 'basmati', 'raita', 'papad', 'papadam', 'gulab jamun', 'jamun', 'kheer',
+    'payasam', 'dhokla', 'vada', 'thepla', 'sabudana', 'jalebi', 'rasgulla', 'chaas',
+    'makhani', 'kadai', 'shahi', 'bhurji', 'rogan josh', 'kofta', 'pakora', 'bhajji',
+    'dahi', 'atta', 'besan', 'haldiram', 'haldirams', 'mtr', 'deep indian', 'deep foods',
+    'sukhi', 'sukhis', 'patak', 'pataks', 'swad', 'gits', 'shan', 'laxmi', 'bikaji',
+    'bikanervala', 'nan', 'thali', 'mutton curry', 'butter chicken', 'fish curry',
+    'appam', 'puttu', 'porotta', 'misal', 'puliogare', 'methi', 'prawn curry'
+  ];
+  return indianKeywords.some(keyword => text.includes(keyword));
+}
+
 // Search food database (USDA with fallback to local)
 app.get("/api/food/search", async (req, res) => {
   const query = (req.query.q || '').trim().toLowerCase();
@@ -593,25 +614,36 @@ app.get("/api/food/search", async (req, res) => {
     protein: item.protein,
     carbs: item.carbs,
     fat: item.fat,
+    sugar: item.sugar || 0,
     servingSize: item.servingSize,
+    isIndian: isIndianFoodItem(item.foodName),
     source: 'Local Database'
   }));
 
   // Attempt USDA API search
   const usdaApiKey = process.env.USDA_API_KEY || 'DEMO_KEY';
-  let usdaResults= [];
+  let usdaResults: any[] = [];
 
   try {
-    const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(query)}&pageSize=15`;
-    const response = await fetch(usdaUrl);
+    // Perform dual search: standard query + Indian specific query to discover Indian foods from USDA FDC
+    const queriesToFetch = [query];
+    if (!query.includes('indian')) {
+      queriesToFetch.push(`${query} indian`);
+    }
 
-    if (response.ok) {
-      const data = await response.json();
+    const fetchPromises = queriesToFetch.map(qStr => {
+      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(qStr)}&pageSize=40`;
+      return fetch(usdaUrl).then(r => r.ok ? r.json() : null).catch(() => null);
+    });
+
+    const responses = await Promise.all(fetchPromises);
+
+    for (const data of responses) {
       if (data && data.foods && Array.isArray(data.foods)) {
-        usdaResults = data.foods.map((food) => {
+        const mapped = data.foods.map((food: any) => {
           // Parse nutrients
-          const getNutrient = (idOrName) => {
-            const nutrient = food.foodNutrients?.find((n) => {
+          const getNutrient = (idOrName: string) => {
+            const nutrient = food.foodNutrients?.find((n: any) => {
               const nameMatch = n.nutrientName?.toLowerCase().includes(idOrName.toLowerCase());
               return n.nutrientId === Number(idOrName) || nameMatch;
             });
@@ -624,7 +656,6 @@ app.get("/api/food/search", async (req, res) => {
           const fat = getNutrient('204') || getNutrient('Total lipid') || getNutrient('1004') || 0;
           const sugar = getNutrient('269') || getNutrient('Sugars') || 0;
 
-          // Build elegant display name
           let servingSize = "100g";
           if (food.servingSize && food.servingSizeUnit) {
             servingSize = `${food.servingSize} ${food.servingSizeUnit}`;
@@ -635,6 +666,8 @@ app.get("/api/food/search", async (req, res) => {
             servingSize = food.householdServingFullText;
           }
 
+          const isIndian = isIndianFoodItem(food.description, food.brandName);
+
           return {
             foodName: food.description,
             calories: Math.round(calories),
@@ -644,29 +677,55 @@ app.get("/api/food/search", async (req, res) => {
             sugar: parseFloat(sugar.toFixed(1)),
             servingSize,
             brandName: food.brandName || null,
+            isIndian,
             source: 'USDA FDC'
           };
         });
+        usdaResults.push(...mapped);
       }
     }
   } catch (error) {
     console.error("USDA API query failed or rate limited. Falling back to local data.", error);
   }
 
-  // Combine results, prioritizing local results or USDA FDC
-  // Remove duplicates by exact match of name
-  const combined = [...localResults];
-  const names = new Set(localResults.map(item => item.foodName.toLowerCase()));
+  // Combine results with strict deduplication by foodName
+  const combinedMap = new Map<string, any>();
 
+  // Add local items first
+  for (const item of localResults) {
+    combinedMap.set(item.foodName.toLowerCase(), item);
+  }
+
+  // Add USDA items
   for (const item of usdaResults) {
     const key = item.foodName.toLowerCase();
-    if (!names.has(key)) {
-      names.add(key);
-      combined.push(item);
+    if (!combinedMap.has(key)) {
+      combinedMap.set(key, item);
     }
   }
 
-  res.json(combined);
+  const allItems = Array.from(combinedMap.values());
+
+  // Prioritize Indian foods over Western foods in sorting
+  allItems.sort((a, b) => {
+    // 1. Indian items prioritized first
+    if (a.isIndian && !b.isIndian) return -1;
+    if (!a.isIndian && b.isIndian) return 1;
+
+    // 2. Exact or startsWith match on query
+    const aStarts = a.foodName.toLowerCase().startsWith(query);
+    const bStarts = b.foodName.toLowerCase().startsWith(query);
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+
+    // 3. Local database preferred over USDA if both are Indian or both non-Indian
+    if (a.source === 'Local Database' && b.source !== 'Local Database') return -1;
+    if (a.source !== 'Local Database' && b.source === 'Local Database') return 1;
+
+    return 0;
+  });
+
+  res.json(allItems);
 });
 
 // Get User Food Logs (with optional date query YYYY-MM-DD)
