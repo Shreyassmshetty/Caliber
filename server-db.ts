@@ -63,6 +63,18 @@ export const LOCAL_FOODS = [
   { foodName: "Kadhi Pakora", calories: 210, protein: 6.2, carbs: 21.0, fat: 11.5, sugar: 3.0, servingSize: "1 cup (200g)" },
 
   // --- Indian Rice & Biryani ---
+  { foodName: "White Rice (Cooked)", calories: 205, protein: 4.2, carbs: 45.0, fat: 0.4, sugar: 0.1, servingSize: "1 cup (158g)" },
+  { foodName: "Steamed White Rice (Sona Masoori)", calories: 190, protein: 3.8, carbs: 42.0, fat: 0.3, sugar: 0.1, servingSize: "1 cup (150g)" },
+  { foodName: "Basmati Rice (Cooked)", calories: 205, protein: 4.3, carbs: 44.5, fat: 0.4, sugar: 0.1, servingSize: "1 cup (158g)" },
+  { foodName: "Puliyogare (Tamarind Rice)", calories: 260, protein: 4.5, carbs: 46.0, fat: 7.2, sugar: 1.5, servingSize: "1 cup (180g)" },
+  { foodName: "Chitranna (Lemon / Turmeric Rice)", calories: 235, protein: 4.2, carbs: 42.0, fat: 6.0, sugar: 0.5, servingSize: "1 cup (180g)" },
+  { foodName: "Bisi Bele Bath", calories: 270, protein: 7.5, carbs: 44.0, fat: 7.8, sugar: 2.0, servingSize: "1 cup (220g)" },
+  { foodName: "Vangi Bath (Brinjal Rice)", calories: 240, protein: 4.8, carbs: 43.0, fat: 6.2, sugar: 1.8, servingSize: "1 cup (180g)" },
+  { foodName: "Ghee Rice", calories: 290, protein: 4.5, carbs: 43.0, fat: 11.0, sugar: 0.2, servingSize: "1 cup (180g)" },
+  { foodName: "Pudina Rice (Mint Rice)", calories: 220, protein: 4.0, carbs: 41.0, fat: 5.5, sugar: 0.5, servingSize: "1 cup (180g)" },
+  { foodName: "Coconut Rice", calories: 280, protein: 4.2, carbs: 42.0, fat: 10.5, sugar: 1.2, servingSize: "1 cup (180g)" },
+  { foodName: "Tomato Rice", calories: 225, protein: 4.1, carbs: 41.5, fat: 5.8, sugar: 2.2, servingSize: "1 cup (180g)" },
+  { foodName: "Ven Pongal", calories: 250, protein: 6.5, carbs: 38.0, fat: 8.0, sugar: 0.5, servingSize: "1 cup (200g)" },
   { foodName: "Chicken Biryani", calories: 360, protein: 22.0, carbs: 42.0, fat: 11.5, sugar: 1.2, servingSize: "1 plate (300g)" },
   { foodName: "Mutton Biryani", calories: 420, protein: 24.0, carbs: 44.0, fat: 17.0, sugar: 1.5, servingSize: "1 plate (300g)" },
   { foodName: "Veg Biryani", calories: 280, protein: 6.5, carbs: 48.0, fat: 7.5, sugar: 2.0, servingSize: "1 plate (280g)" },

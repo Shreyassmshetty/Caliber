@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Search, Plus, Sparkles, Camera, Barcode, BookOpen, PenTool, Check, Trash2, HelpCircle, Mic } from 'lucide-react';
 import { BarcodeScanner } from './BarcodeScanner';
@@ -16,6 +16,7 @@ export const FoodLogger = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const latestSearchRef = useRef('');
 
   // Selected food item for logging configuration
   const [selectedFood, setSelectedFood] = useState(null);
@@ -56,29 +57,37 @@ export const FoodLogger = () => {
   };
 
   const performSearch = async (query) => {
+    latestSearchRef.current = query;
     setSearchLoading(true);
     try {
       const res = await fetch(`${apiBase}/api/food/search?q=${encodeURIComponent(query)}`);
       if (res.ok) {
         const data = await res.json();
-        setSearchResults(data);
+        if (latestSearchRef.current === query) {
+          setSearchResults(data);
+        }
       }
     } catch (err) {
       console.error(err);
     } finally {
-      setSearchLoading(false);
+      if (latestSearchRef.current === query) {
+        setSearchLoading(false);
+      }
     }
   };
 
   // Run search whenever query changes (with simple debouncing)
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      if (searchQuery.trim().length > 1) {
-        performSearch(searchQuery);
+      const trimmed = searchQuery.trim();
+      if (trimmed.length > 1) {
+        performSearch(trimmed);
       } else {
+        latestSearchRef.current = trimmed;
         setSearchResults([]);
+        setSearchLoading(false);
       }
-    }, 350);
+    }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);

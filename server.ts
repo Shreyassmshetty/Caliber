@@ -591,7 +591,10 @@ function isIndianFoodItem(foodName: string, brandName?: string | null): boolean 
     'dahi', 'atta', 'besan', 'haldiram', 'haldirams', 'mtr', 'deep indian', 'deep foods',
     'sukhi', 'sukhis', 'patak', 'pataks', 'swad', 'gits', 'shan', 'laxmi', 'bikaji',
     'bikanervala', 'nan', 'thali', 'mutton curry', 'butter chicken', 'fish curry',
-    'appam', 'puttu', 'porotta', 'misal', 'puliogare', 'methi', 'prawn curry'
+    'appam', 'puttu', 'porotta', 'misal', 'puliogare', 'methi', 'prawn curry',
+    'chitranna', 'puliyogare', 'puliyodarai', 'puliyodharai', 'bisibelebath', 'bisibele',
+    'vangi bath', 'white rice', 'sona masoori', 'pongal', 'lemon rice', 'ghee rice', 'curd rice',
+    'pudina rice', 'coconut rice', 'tomato rice', 'tamarind rice'
   ];
   return indianKeywords.some(keyword => text.includes(keyword));
 }
@@ -606,6 +609,11 @@ function parseOFFProduct(p: any): any {
 
   const n = p.nutriments || {};
 
+  const protein = Number(n['proteins_100g'] ?? n['proteins_serving'] ?? n['proteins'] ?? n['proteins_value'] ?? 0);
+  const carbs = Number(n['carbohydrates_100g'] ?? n['carbohydrates_serving'] ?? n['carbohydrates'] ?? n['carbohydrates_value'] ?? 0);
+  const fat = Number(n['fat_100g'] ?? n['fat_serving'] ?? n['fat'] ?? n['fat_value'] ?? 0);
+  const sugar = Number(n['sugars_100g'] ?? n['sugars_serving'] ?? n['sugars'] ?? n['sugars_value'] ?? 0);
+
   let calories = 0;
   if (n['energy-kcal_100g'] !== undefined && n['energy-kcal_100g'] !== null) {
     calories = Number(n['energy-kcal_100g']);
@@ -613,15 +621,44 @@ function parseOFFProduct(p: any): any {
     calories = Number(n['energy-kcal_serving']);
   } else if (n['energy-kcal'] !== undefined && n['energy-kcal'] !== null) {
     calories = Number(n['energy-kcal']);
+  } else if (n['energy-kcal_value'] !== undefined && n['energy-kcal_value'] !== null) {
+    calories = Number(n['energy-kcal_value']);
   } else if (n['energy_100g'] !== undefined && n['energy_100g'] !== null) {
     const val = Number(n['energy_100g']);
     calories = val > 1000 ? val / 4.184 : val;
+  } else if (n['energy_serving'] !== undefined && n['energy_serving'] !== null) {
+    const val = Number(n['energy_serving']);
+    calories = val > 1000 ? val / 4.184 : val;
+  } else if (n['energy_value'] !== undefined && n['energy_value'] !== null) {
+    const val = Number(n['energy_value']);
+    calories = val > 1000 ? val / 4.184 : val;
   }
 
-  const protein = Number(n['proteins_100g'] ?? n['proteins_serving'] ?? n['proteins'] ?? 0);
-  const carbs = Number(n['carbohydrates_100g'] ?? n['carbohydrates_serving'] ?? n['carbohydrates'] ?? 0);
-  const fat = Number(n['fat_100g'] ?? n['fat_serving'] ?? n['fat'] ?? 0);
-  const sugar = Number(n['sugars_100g'] ?? n['sugars_serving'] ?? n['sugars'] ?? 0);
+  // Calculate calories from macros if missing or 0
+  const macroCalories = Math.round(
+    (isNaN(protein) ? 0 : Math.max(0, protein)) * 4 +
+    (isNaN(carbs) ? 0 : Math.max(0, carbs)) * 4 +
+    (isNaN(fat) ? 0 : Math.max(0, fat)) * 9
+  );
+
+  if ((isNaN(calories) || calories <= 0) && macroCalories > 0) {
+    calories = macroCalories;
+  }
+
+  const finalCalories = Math.round(Math.max(0, isNaN(calories) ? 0 : calories));
+  const finalProtein = parseFloat(Math.max(0, isNaN(protein) ? 0 : protein).toFixed(1));
+  const finalCarbs = parseFloat(Math.max(0, isNaN(carbs) ? 0 : carbs).toFixed(1));
+  const finalFat = parseFloat(Math.max(0, isNaN(fat) ? 0 : fat).toFixed(1));
+  const finalSugar = parseFloat(Math.max(0, isNaN(sugar) ? 0 : sugar).toFixed(1));
+
+  // Reject incomplete crowd-sourced items that have 0 calories and 0 macros (unless explicitly zero-cal beverage)
+  if (finalCalories === 0 && finalProtein === 0 && finalCarbs === 0 && finalFat === 0) {
+    const lowerName = cleanName.toLowerCase();
+    const isZeroCalorieFood = /\b(water|zero|diet|black coffee|black tea|green tea|salt|sparkling)\b/i.test(lowerName);
+    if (!isZeroCalorieFood) {
+      return null;
+    }
+  }
 
   let servingSize = p.serving_size || "100g";
 
@@ -634,11 +671,11 @@ function parseOFFProduct(p: any): any {
 
   return {
     foodName: displayName,
-    calories: Math.round(Math.max(0, isNaN(calories) ? 0 : calories)),
-    protein: parseFloat(Math.max(0, isNaN(protein) ? 0 : protein).toFixed(1)),
-    carbs: parseFloat(Math.max(0, isNaN(carbs) ? 0 : carbs).toFixed(1)),
-    fat: parseFloat(Math.max(0, isNaN(fat) ? 0 : fat).toFixed(1)),
-    sugar: parseFloat(Math.max(0, isNaN(sugar) ? 0 : sugar).toFixed(1)),
+    calories: finalCalories,
+    protein: finalProtein,
+    carbs: finalCarbs,
+    fat: finalFat,
+    sugar: finalSugar,
     servingSize,
     brandName: brandName || null,
     isIndian,
@@ -654,17 +691,25 @@ function isPowderItem(foodName: string): boolean {
 
 // Search food database (Open Food Facts + IFCT Indian Food Database + USDA Fallback)
 app.get("/api/food/search", async (req, res) => {
-  const query = (req.query.q || '').trim().toLowerCase();
+  const rawQuery = (req.query.q || '').trim().toLowerCase();
 
-  if (!query) {
+  if (!rawQuery) {
     res.json([]);
     return;
   }
 
-  // 1. Search local IFCT & Indian Food Database first
-  const localResults = LOCAL_FOODS.filter(food =>
-    food.foodName.toLowerCase().includes(query)
-  ).map(item => ({
+  // Tokenized search query matching
+  const queryTokens = rawQuery.split(/\s+/).filter(Boolean).map(t => {
+    // Normalize simple plurals
+    if (t.length > 3 && t.endsWith('s') && !t.endsWith('ss')) return t.slice(0, -1);
+    return t;
+  });
+
+  // 1. Search local IFCT & Indian Food Database first (multitoken flexible matching)
+  const localResults = LOCAL_FOODS.filter(food => {
+    const name = food.foodName.toLowerCase();
+    return queryTokens.every(token => name.includes(token));
+  }).map(item => ({
     foodName: item.foodName,
     calories: item.calories,
     protein: item.protein,
@@ -679,13 +724,22 @@ app.get("/api/food/search", async (req, res) => {
   let offResults: any[] = [];
 
   try {
-    // 2. Fetch Open Food Facts India and Open Food Facts Global in parallel
-    const offIndiaUrl = `https://in.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_tag=categories&sort_by=unique_scans_n&page_size=40&json=1`;
-    const offWorldUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_tag=categories&sort_by=unique_scans_n&page_size=30&json=1`;
+    // 2. Fetch Open Food Facts India and Open Food Facts Global in parallel with 2s timeout
+    const fetchWithTimeout = (url: string, ms = 2200) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), ms);
+      return fetch(url, { signal: controller.signal })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null)
+        .finally(() => clearTimeout(id));
+    };
+
+    const offIndiaUrl = `https://in.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(rawQuery)}&search_tag=categories&sort_by=unique_scans_n&page_size=40&json=1`;
+    const offWorldUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(rawQuery)}&search_tag=categories&sort_by=unique_scans_n&page_size=30&json=1`;
 
     const [indiaRes, worldRes] = await Promise.all([
-      fetch(offIndiaUrl).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(offWorldUrl).then(r => r.ok ? r.json() : null).catch(() => null)
+      fetchWithTimeout(offIndiaUrl, 2200),
+      fetchWithTimeout(offWorldUrl, 2200)
     ]);
 
     const products = [];
@@ -711,13 +765,18 @@ app.get("/api/food/search", async (req, res) => {
   if (offResults.length < 5) {
     try {
       const usdaApiKey = process.env.USDA_API_KEY || 'DEMO_KEY';
-      const qStr = query.includes('indian') ? query : `${query} indian`;
-      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(qStr)}&pageSize=20`;
-      const response = await fetch(usdaUrl);
-      if (response.ok) {
+      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(rawQuery)}&pageSize=20`;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      
+      const response = await fetch(usdaUrl, { signal: controller.signal }).catch(() => null);
+      clearTimeout(timeoutId);
+
+      if (response && response.ok) {
         const data = await response.json();
         if (data && data.foods && Array.isArray(data.foods)) {
-          usdaResults = data.foods.map((food: any) => {
+          for (const food of data.foods) {
             const getNutrient = (idOrName: string) => {
               const nutrient = food.foodNutrients?.find((n: any) => {
                 const nameMatch = n.nutrientName?.toLowerCase().includes(idOrName.toLowerCase());
@@ -726,11 +785,30 @@ app.get("/api/food/search", async (req, res) => {
               return nutrient ? Number(nutrient.value) : 0;
             };
 
-            const calories = getNutrient('208') || getNutrient('Energy') || getNutrient('1008') || 0;
+            let calories = getNutrient('208') || getNutrient('Energy') || getNutrient('1008') || 0;
             const protein = getNutrient('203') || getNutrient('Protein') || getNutrient('1003') || 0;
             const carbs = getNutrient('205') || getNutrient('Carbohydrate') || getNutrient('1005') || 0;
             const fat = getNutrient('204') || getNutrient('Total lipid') || getNutrient('1004') || 0;
             const sugar = getNutrient('269') || getNutrient('Sugars') || 0;
+
+            const macroCalories = Math.round(protein * 4 + carbs * 4 + fat * 9);
+            if ((!calories || calories <= 0) && macroCalories > 0) {
+              calories = macroCalories;
+            }
+
+            const finalCalories = Math.round(Math.max(0, calories));
+            const finalProtein = parseFloat(Math.max(0, protein).toFixed(1));
+            const finalCarbs = parseFloat(Math.max(0, carbs).toFixed(1));
+            const finalFat = parseFloat(Math.max(0, fat).toFixed(1));
+            const finalSugar = parseFloat(Math.max(0, sugar).toFixed(1));
+
+            if (finalCalories === 0 && finalProtein === 0 && finalCarbs === 0 && finalFat === 0) {
+              const lowerName = (food.description || '').toLowerCase();
+              const isZeroCalorieFood = /\b(water|zero|diet|black coffee|black tea|green tea|salt|sparkling)\b/i.test(lowerName);
+              if (!isZeroCalorieFood) {
+                continue;
+              }
+            }
 
             let servingSize = "100g";
             if (food.servingSize && food.servingSizeUnit) {
@@ -741,19 +819,19 @@ app.get("/api/food/search", async (req, res) => {
 
             const isIndian = isIndianFoodItem(food.description, food.brandName);
 
-            return {
+            usdaResults.push({
               foodName: food.description,
-              calories: Math.round(calories),
-              protein: parseFloat(protein.toFixed(1)),
-              carbs: parseFloat(carbs.toFixed(1)),
-              fat: parseFloat(fat.toFixed(1)),
-              sugar: parseFloat(sugar.toFixed(1)),
+              calories: finalCalories,
+              protein: finalProtein,
+              carbs: finalCarbs,
+              fat: finalFat,
+              sugar: finalSugar,
               servingSize,
               brandName: food.brandName || null,
               isIndian,
               source: 'USDA FDC'
-            };
-          });
+            });
+          }
         }
       }
     } catch (err) {}
@@ -786,9 +864,22 @@ app.get("/api/food/search", async (req, res) => {
   let allItems = Array.from(combinedMap.values());
 
   // Filter out powder items unless user specifically queried for 'powder' or 'pdr'
-  const queryWantsPowder = query.includes('powder') || query.includes('pdr');
+  const queryWantsPowder = rawQuery.includes('powder') || rawQuery.includes('pdr');
   if (!queryWantsPowder) {
     allItems = allItems.filter(item => !isPowderItem(item.foodName));
+  }
+
+  // Strictly filter out unrelated items that do not contain query tokens
+  const stopWords = new Set(['with', 'and', 'the', 'for', 'a', 'an', 'of', 'in', 'on', 'at', 'to']);
+  const meaningfulTokens = queryTokens.filter(t => t.length > 1 && !stopWords.has(t));
+
+  if (meaningfulTokens.length > 0) {
+    allItems = allItems.filter(item => {
+      const name = item.foodName.toLowerCase();
+      const brand = (item.brandName || '').toLowerCase();
+      // An item is relevant if at least one meaningful token is found in foodName or brandName
+      return meaningfulTokens.some(token => name.includes(token) || brand.includes(token));
+    });
   }
 
   // Prioritize Indian foods over Western foods in sorting
@@ -798,8 +889,8 @@ app.get("/api/food/search", async (req, res) => {
     if (!a.isIndian && b.isIndian) return 1;
 
     // 2. Exact or startsWith match on query
-    const aStarts = a.foodName.toLowerCase().startsWith(query);
-    const bStarts = b.foodName.toLowerCase().startsWith(query);
+    const aStarts = a.foodName.toLowerCase().startsWith(rawQuery);
+    const bStarts = b.foodName.toLowerCase().startsWith(rawQuery);
     if (aStarts && !bStarts) return -1;
     if (!aStarts && bStarts) return 1;
 
