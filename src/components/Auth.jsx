@@ -180,7 +180,7 @@ export const Auth = () => {
       <div className="mt-8 grid grid-cols-3 gap-3 text-center">
         <div className="bg-white/50 p-3 rounded-xl border border-gray-200/50 flex flex-col items-center">
           <Apple className="w-4 h-4 text-primary mb-1" />
-          <span className="text-[10px] font-medium text-gray-500">USDA Search</span>
+          <span className="text-[10px] font-medium text-gray-500">IFCT Food Search</span>
         </div>
         <div className="bg-white/50 p-3 rounded-xl border border-gray-200/50 flex flex-col items-center">
           <Sparkles className="w-4 h-4 text-purple-500 mb-1" />

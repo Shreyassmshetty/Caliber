@@ -139,7 +139,7 @@ const AppContent = () => {
         </main>
 
         <footer className="p-4 text-center text-[10px] text-slate-400 border-t border-slate-100 bg-white/40">
-          Caliber © 2026. Powered by USDA nutrition and Gemini AI.
+          Caliber © 2026. Powered by IFCT, Open Food Facts & Gemini AI.
         </footer>
       </div>
     );

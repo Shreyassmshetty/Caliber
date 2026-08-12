@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Search, RefreshCw, X, AlertCircle } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Camera, Search, RefreshCw, X, AlertCircle, Barcode, CheckCircle2 } from 'lucide-react';
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 
 export const BarcodeScanner = ({ onFoodFound, onClose }) => {
   const [barcode, setBarcode] = useState('');
@@ -9,67 +9,62 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef(null);
 
-  // Lookup barcode on Open Food Facts API
   const stopCamera = () => {
     if (scannerRef.current) {
       try {
-        scannerRef.current.clear();
+        if (typeof scannerRef.current.clear === 'function') {
+          scannerRef.current.clear();
+        } else if (typeof scannerRef.current.stop === 'function') {
+          scannerRef.current.stop();
+        }
       } catch (e) {
-        console.error(e);
+        console.error("Camera stop error:", e);
       }
       scannerRef.current = null;
     }
     setIsScanning(false);
   };
 
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
   const lookupBarcode = async (code) => {
-    if (!code) return;
+    const cleanCode = code ? code.trim() : '';
+    if (!cleanCode) return;
+
     setLoading(true);
     setScanError(null);
+
     try {
-      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-      if (!response.ok) {
-        throw new Error("Failed to scan product.");
-      }
-      const data = await response.json();
-      if (data.status === 1 && data.product) {
-        const prod = data.product;
-        // Parse macros from nutriment list (standard 100g basis)
-        const name = prod.product_name || `Scanned Item (${code})`;
-        const brand = prod.brands ? ` - ${prod.brands}` : '';
-        const serving = prod.serving_size || "100g";
+      const response = await fetch(`${apiBase}/api/food/barcode/${encodeURIComponent(cleanCode)}`);
+      const data = response.ok ? await response.json() : null;
 
-        const nutriments = prod.nutriments || {};
-        const calories = nutriments['energy-kcal_serving'] || nutriments['energy-kcal'] || 0;
-        const protein = nutriments['proteins_serving'] || nutriments['proteins_100g'] || 0;
-        const carbs = nutriments['carbohydrates_serving'] || nutriments['carbohydrates_100g'] || 0;
-        const fat = nutriments['fat_serving'] || nutriments['fat_100g'] || 0;
-
+      if (data && data.found && data.product) {
         onFoodFound({
-          foodName: `${name}${brand}`,
-          calories: Math.round(Number(calories)),
-          protein: parseFloat(Number(protein).toFixed(1)),
-          carbs: parseFloat(Number(carbs).toFixed(1)),
-          fat: parseFloat(Number(fat).toFixed(1)),
-          servingSize: serving
+          foodName: data.product.foodName,
+          calories: Number(data.product.calories) || 0,
+          protein: Number(data.product.protein) || 0,
+          carbs: Number(data.product.carbs) || 0,
+          fat: Number(data.product.fat) || 0,
+          sugar: Number(data.product.sugar) || 0,
+          servingSize: data.product.servingSize || "100g",
+          source: data.product.source || 'Barcode (Open Food Facts)'
         });
         stopCamera();
       } else {
-        setScanError("Product not found in Open Food Facts database.");
+        setScanError(data?.error || `Barcode ${cleanCode} not found in Open Food Facts database.`);
       }
     } catch (err) {
-      console.error(err);
-      setScanError("Network error lookup up barcode.");
+      console.error("Barcode lookup error:", err);
+      setScanError("Failed to look up barcode. Please check connection.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Start Html5QrcodeScanner
   const startCamera = () => {
     setIsScanning(true);
     setScanError(null);
-    // Delay initialization slightly to ensure container div is mounted
+
     setTimeout(() => {
       try {
         const scanner = new Html5QrcodeScanner(
@@ -80,76 +75,82 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
 
         scanner.render(
           (decodedText) => {
-            // Success call
             setBarcode(decodedText);
-            scanner.clear();
+            try {
+              scanner.clear();
+            } catch(e){}
             setIsScanning(false);
             lookupBarcode(decodedText);
           },
-          (error) => {
-            // Ignore ongoing frame noise
-          }
+          () => {}
         );
         scannerRef.current = scanner;
       } catch (err) {
         console.error("Camera setup failed:", err);
-        setScanError("Camera access failed. Ensure permissions are allowed.");
+        setScanError("Camera access required to scan. Ensure camera permissions are granted.");
         setIsScanning(false);
       }
-    }, 100);
+    }, 150);
   };
 
+  // Automatically start camera when component mounts
   useEffect(() => {
+    startCamera();
     return () => {
       stopCamera();
     };
   }, []);
 
   return (
-    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm text-center relative max-w-sm mx-auto">
+    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-xl text-center relative max-w-sm mx-auto animate-in fade-in zoom-in-95 duration-200">
       <button
         onClick={() => {
           stopCamera();
           onClose();
         }}
-        className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-50 transition"
+        className="absolute top-3.5 right-3.5 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition"
       >
         <X className="w-5 h-5" />
       </button>
 
       <div className="mb-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-700">Barcode Scanner</h3>
-        <p className="text-[11px] text-gray-400 mt-1">Scan grocery items using your camera or enter manual code</p>
+        <div className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold mb-2">
+          <Barcode className="w-4 h-4" />
+          <span>Barcode Scanner</span>
+        </div>
+        <h3 className="text-sm font-bold text-gray-800">Scan Product Barcode</h3>
+        <p className="text-[11px] text-gray-400 mt-0.5">Point camera at packaged food barcode or enter code below</p>
       </div>
 
       {scanError && (
-        <div className="mb-3 bg-amber-50 text-amber-700 p-3 rounded-xl text-[11px] font-semibold border border-amber-100 flex items-center gap-1.5 justify-center">
-          <AlertCircle className="w-4 h-4 text-amber-600" />
+        <div className="mb-3 bg-amber-50 text-amber-800 p-3 rounded-2xl text-[11px] font-medium border border-amber-200 flex items-start gap-2 text-left">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <span>{scanError}</span>
         </div>
       )}
 
       {/* Camera Stage */}
       {isScanning ? (
-        <div className="bg-gray-900 rounded-2xl overflow-hidden aspect-square flex flex-col justify-center items-center text-white p-4 relative mb-4">
-          <div id="qr-reader-container" className="w-full h-full bg-black"></div>
+        <div className="bg-gray-900 rounded-2xl overflow-hidden aspect-square flex flex-col justify-center items-center text-white p-2 relative mb-4 shadow-inner">
+          <div id="qr-reader-container" className="w-full h-full bg-black rounded-xl overflow-hidden"></div>
           <button
             onClick={stopCamera}
-            className="absolute bottom-4 bg-white/20 hover:bg-white/30 text-white font-semibold text-xs px-4 py-2 rounded-xl backdrop-blur-sm transition"
+            className="absolute bottom-3 bg-black/60 hover:bg-black/80 text-white font-medium text-[11px] px-3.5 py-1.5 rounded-full backdrop-blur-md transition border border-white/20"
           >
             Cancel Camera
           </button>
         </div>
       ) : (
-        <div className="bg-gray-50 p-6 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center aspect-video mb-4">
-          <Camera className="w-8 h-8 text-primary/40 mb-2" />
+        <div className="bg-amber-50/50 p-6 rounded-2xl border border-dashed border-amber-200 flex flex-col items-center justify-center aspect-video mb-4">
+          <Barcode className="w-10 h-10 text-amber-500/70 mb-2" />
           <button
             onClick={startCamera}
-            className="bg-primary hover:bg-primary-light text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition"
+            className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5"
           >
-            Enable Camera
+            <Camera className="w-4 h-4" />
+            Enable Camera Scanner
           </button>
-          <span className="text-[10px] text-gray-400 mt-1">Uses Open Food Facts DB</span>
+          <span className="text-[10px] text-gray-400 mt-2">Searches Open Food Facts India & Global</span>
         </div>
       )}
 
@@ -157,21 +158,22 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
       <div className="flex gap-2">
         <input
           type="text"
-          placeholder="E.g., 737628011862"
+          placeholder="Enter barcode e.g. 8901058852870"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
-          className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+          onKeyDown={(e) => e.key === 'Enter' && lookupBarcode(barcode)}
+          className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 bg-gray-50/50"
         />
         <button
           onClick={() => lookupBarcode(barcode)}
-          disabled={loading || !barcode}
-          className="bg-primary hover:bg-primary-light text-white font-medium px-4 rounded-xl text-xs flex items-center gap-1 shadow-sm disabled:opacity-50"
+          disabled={loading || !barcode.trim()}
+          className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 rounded-xl text-xs flex items-center gap-1 shadow-sm disabled:opacity-50 transition"
         >
           {loading ? (
             <RefreshCw className="w-4 h-4 animate-spin" />
           ) : (
             <>
-              <Search className="w-4 h-4" /> Search
+              <Search className="w-4 h-4" /> Scan
             </>
           )}
         </button>

@@ -596,7 +596,63 @@ function isIndianFoodItem(foodName: string, brandName?: string | null): boolean 
   return indianKeywords.some(keyword => text.includes(keyword));
 }
 
-// Search food database (USDA with fallback to local)
+// Helper to parse Open Food Facts product entry
+function parseOFFProduct(p: any): any {
+  const name = p.product_name_en || p.product_name || p.product_name_in || p.generic_name || p.abbreviated_product_name;
+  if (!name || typeof name !== 'string' || name.trim().length === 0) return null;
+
+  const cleanName = name.trim();
+  const brandName = p.brands || p.brand_owner || null;
+
+  const n = p.nutriments || {};
+
+  let calories = 0;
+  if (n['energy-kcal_100g'] !== undefined && n['energy-kcal_100g'] !== null) {
+    calories = Number(n['energy-kcal_100g']);
+  } else if (n['energy-kcal_serving'] !== undefined && n['energy-kcal_serving'] !== null) {
+    calories = Number(n['energy-kcal_serving']);
+  } else if (n['energy-kcal'] !== undefined && n['energy-kcal'] !== null) {
+    calories = Number(n['energy-kcal']);
+  } else if (n['energy_100g'] !== undefined && n['energy_100g'] !== null) {
+    const val = Number(n['energy_100g']);
+    calories = val > 1000 ? val / 4.184 : val;
+  }
+
+  const protein = Number(n['proteins_100g'] ?? n['proteins_serving'] ?? n['proteins'] ?? 0);
+  const carbs = Number(n['carbohydrates_100g'] ?? n['carbohydrates_serving'] ?? n['carbohydrates'] ?? 0);
+  const fat = Number(n['fat_100g'] ?? n['fat_serving'] ?? n['fat'] ?? 0);
+  const sugar = Number(n['sugars_100g'] ?? n['sugars_serving'] ?? n['sugars'] ?? 0);
+
+  let servingSize = p.serving_size || "100g";
+
+  const isIndian = isIndianFoodItem(cleanName, brandName) ||
+    (Array.isArray(p.countries_tags) && p.countries_tags.some((c: string) => c.toLowerCase().includes('india')));
+
+  const displayName = brandName && !cleanName.toLowerCase().includes(brandName.toLowerCase())
+    ? `${cleanName} (${brandName})`
+    : cleanName;
+
+  return {
+    foodName: displayName,
+    calories: Math.round(Math.max(0, isNaN(calories) ? 0 : calories)),
+    protein: parseFloat(Math.max(0, isNaN(protein) ? 0 : protein).toFixed(1)),
+    carbs: parseFloat(Math.max(0, isNaN(carbs) ? 0 : carbs).toFixed(1)),
+    fat: parseFloat(Math.max(0, isNaN(fat) ? 0 : fat).toFixed(1)),
+    sugar: parseFloat(Math.max(0, isNaN(sugar) ? 0 : sugar).toFixed(1)),
+    servingSize,
+    brandName: brandName || null,
+    isIndian,
+    source: isIndian ? 'IFCT / Open Food Facts (India)' : 'Open Food Facts'
+  };
+}
+
+// Helper to check if a food item is a powder or dry spice extract
+function isPowderItem(foodName: string): boolean {
+  if (!foodName) return false;
+  return /\b(powder|powdered|powders|pdr)\b/i.test(foodName);
+}
+
+// Search food database (Open Food Facts + IFCT Indian Food Database + USDA Fallback)
 app.get("/api/food/search", async (req, res) => {
   const query = (req.query.q || '').trim().toLowerCase();
 
@@ -605,7 +661,7 @@ app.get("/api/food/search", async (req, res) => {
     return;
   }
 
-  // Filter local database items first
+  // 1. Search local IFCT & Indian Food Database first
   const localResults = LOCAL_FOODS.filter(food =>
     food.foodName.toLowerCase().includes(query)
   ).map(item => ({
@@ -617,86 +673,109 @@ app.get("/api/food/search", async (req, res) => {
     sugar: item.sugar || 0,
     servingSize: item.servingSize,
     isIndian: isIndianFoodItem(item.foodName),
-    source: 'Local Database'
+    source: isIndianFoodItem(item.foodName) ? 'IFCT (Indian Food DB)' : 'Local Database'
   }));
 
-  // Attempt USDA API search
-  const usdaApiKey = process.env.USDA_API_KEY || 'DEMO_KEY';
-  let usdaResults: any[] = [];
+  let offResults: any[] = [];
 
   try {
-    // Perform dual search: standard query + Indian specific query to discover Indian foods from USDA FDC
-    const queriesToFetch = [query];
-    if (!query.includes('indian')) {
-      queriesToFetch.push(`${query} indian`);
+    // 2. Fetch Open Food Facts India and Open Food Facts Global in parallel
+    const offIndiaUrl = `https://in.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_tag=categories&sort_by=unique_scans_n&page_size=40&json=1`;
+    const offWorldUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_tag=categories&sort_by=unique_scans_n&page_size=30&json=1`;
+
+    const [indiaRes, worldRes] = await Promise.all([
+      fetch(offIndiaUrl).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(offWorldUrl).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    const products = [];
+    if (indiaRes && Array.isArray(indiaRes.products)) {
+      products.push(...indiaRes.products);
+    }
+    if (worldRes && Array.isArray(worldRes.products)) {
+      products.push(...worldRes.products);
     }
 
-    const fetchPromises = queriesToFetch.map(qStr => {
-      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(qStr)}&pageSize=40`;
-      return fetch(usdaUrl).then(r => r.ok ? r.json() : null).catch(() => null);
-    });
-
-    const responses = await Promise.all(fetchPromises);
-
-    for (const data of responses) {
-      if (data && data.foods && Array.isArray(data.foods)) {
-        const mapped = data.foods.map((food: any) => {
-          // Parse nutrients
-          const getNutrient = (idOrName: string) => {
-            const nutrient = food.foodNutrients?.find((n: any) => {
-              const nameMatch = n.nutrientName?.toLowerCase().includes(idOrName.toLowerCase());
-              return n.nutrientId === Number(idOrName) || nameMatch;
-            });
-            return nutrient ? Number(nutrient.value) : 0;
-          };
-
-          const calories = getNutrient('208') || getNutrient('Energy') || getNutrient('1008') || 0;
-          const protein = getNutrient('203') || getNutrient('Protein') || getNutrient('1003') || 0;
-          const carbs = getNutrient('205') || getNutrient('Carbohydrate') || getNutrient('1005') || 0;
-          const fat = getNutrient('204') || getNutrient('Total lipid') || getNutrient('1004') || 0;
-          const sugar = getNutrient('269') || getNutrient('Sugars') || 0;
-
-          let servingSize = "100g";
-          if (food.servingSize && food.servingSizeUnit) {
-            servingSize = `${food.servingSize} ${food.servingSizeUnit}`;
-            if (food.householdServingFullText) {
-              servingSize += ` (${food.householdServingFullText})`;
-            }
-          } else if (food.householdServingFullText) {
-            servingSize = food.householdServingFullText;
-          }
-
-          const isIndian = isIndianFoodItem(food.description, food.brandName);
-
-          return {
-            foodName: food.description,
-            calories: Math.round(calories),
-            protein: parseFloat(protein.toFixed(1)),
-            carbs: parseFloat(carbs.toFixed(1)),
-            fat: parseFloat(fat.toFixed(1)),
-            sugar: parseFloat(sugar.toFixed(1)),
-            servingSize,
-            brandName: food.brandName || null,
-            isIndian,
-            source: 'USDA FDC'
-          };
-        });
-        usdaResults.push(...mapped);
+    for (const p of products) {
+      const parsed = parseOFFProduct(p);
+      if (parsed) {
+        offResults.push(parsed);
       }
     }
   } catch (error) {
-    console.error("USDA API query failed or rate limited. Falling back to local data.", error);
+    console.error("Open Food Facts search error:", error);
+  }
+
+  // 3. Fallback to USDA FDC if Open Food Facts returns low count
+  let usdaResults: any[] = [];
+  if (offResults.length < 5) {
+    try {
+      const usdaApiKey = process.env.USDA_API_KEY || 'DEMO_KEY';
+      const qStr = query.includes('indian') ? query : `${query} indian`;
+      const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${usdaApiKey}&query=${encodeURIComponent(qStr)}&pageSize=20`;
+      const response = await fetch(usdaUrl);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.foods && Array.isArray(data.foods)) {
+          usdaResults = data.foods.map((food: any) => {
+            const getNutrient = (idOrName: string) => {
+              const nutrient = food.foodNutrients?.find((n: any) => {
+                const nameMatch = n.nutrientName?.toLowerCase().includes(idOrName.toLowerCase());
+                return n.nutrientId === Number(idOrName) || nameMatch;
+              });
+              return nutrient ? Number(nutrient.value) : 0;
+            };
+
+            const calories = getNutrient('208') || getNutrient('Energy') || getNutrient('1008') || 0;
+            const protein = getNutrient('203') || getNutrient('Protein') || getNutrient('1003') || 0;
+            const carbs = getNutrient('205') || getNutrient('Carbohydrate') || getNutrient('1005') || 0;
+            const fat = getNutrient('204') || getNutrient('Total lipid') || getNutrient('1004') || 0;
+            const sugar = getNutrient('269') || getNutrient('Sugars') || 0;
+
+            let servingSize = "100g";
+            if (food.servingSize && food.servingSizeUnit) {
+              servingSize = `${food.servingSize} ${food.servingSizeUnit}`;
+            } else if (food.householdServingFullText) {
+              servingSize = food.householdServingFullText;
+            }
+
+            const isIndian = isIndianFoodItem(food.description, food.brandName);
+
+            return {
+              foodName: food.description,
+              calories: Math.round(calories),
+              protein: parseFloat(protein.toFixed(1)),
+              carbs: parseFloat(carbs.toFixed(1)),
+              fat: parseFloat(fat.toFixed(1)),
+              sugar: parseFloat(sugar.toFixed(1)),
+              servingSize,
+              brandName: food.brandName || null,
+              isIndian,
+              source: 'USDA FDC'
+            };
+          });
+        }
+      }
+    } catch (err) {}
   }
 
   // Combine results with strict deduplication by foodName
   const combinedMap = new Map<string, any>();
 
-  // Add local items first
+  // Add IFCT & Local DB items
   for (const item of localResults) {
     combinedMap.set(item.foodName.toLowerCase(), item);
   }
 
-  // Add USDA items
+  // Add Open Food Facts items
+  for (const item of offResults) {
+    const key = item.foodName.toLowerCase();
+    if (!combinedMap.has(key)) {
+      combinedMap.set(key, item);
+    }
+  }
+
+  // Add USDA fallback items
   for (const item of usdaResults) {
     const key = item.foodName.toLowerCase();
     if (!combinedMap.has(key)) {
@@ -704,7 +783,13 @@ app.get("/api/food/search", async (req, res) => {
     }
   }
 
-  const allItems = Array.from(combinedMap.values());
+  let allItems = Array.from(combinedMap.values());
+
+  // Filter out powder items unless user specifically queried for 'powder' or 'pdr'
+  const queryWantsPowder = query.includes('powder') || query.includes('pdr');
+  if (!queryWantsPowder) {
+    allItems = allItems.filter(item => !isPowderItem(item.foodName));
+  }
 
   // Prioritize Indian foods over Western foods in sorting
   allItems.sort((a, b) => {
@@ -718,14 +803,50 @@ app.get("/api/food/search", async (req, res) => {
     if (aStarts && !bStarts) return -1;
     if (!aStarts && bStarts) return 1;
 
-    // 3. Local database preferred over USDA if both are Indian or both non-Indian
-    if (a.source === 'Local Database' && b.source !== 'Local Database') return -1;
-    if (a.source !== 'Local Database' && b.source === 'Local Database') return 1;
+    // 3. IFCT / Local Indian Food DB takes top precedence
+    if (a.source.includes('IFCT') && !b.source.includes('IFCT')) return -1;
+    if (!a.source.includes('IFCT') && b.source.includes('IFCT')) return 1;
 
     return 0;
   });
 
   res.json(allItems);
+});
+
+// Barcode Lookup Route (Proxies Open Food Facts to avoid client CORS / network rejection)
+app.get("/api/food/barcode/:code", async (req, res) => {
+  const code = (req.params.code || '').trim();
+  if (!code) {
+    res.status(400).json({ found: false, error: "Barcode is required" });
+    return;
+  }
+
+  try {
+    // 1. Query Indian Open Food Facts API
+    let offRes = await fetch(`https://in.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`);
+    let data = offRes.ok ? await offRes.json() : null;
+
+    // 2. Query World Open Food Facts API if not found
+    if (!data || data.status !== 1 || !data.product) {
+      offRes = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`);
+      if (offRes.ok) {
+        data = await offRes.json();
+      }
+    }
+
+    if (data && data.status === 1 && data.product) {
+      const parsed = parseOFFProduct(data.product);
+      if (parsed) {
+        res.json({ found: true, product: parsed });
+        return;
+      }
+    }
+
+    res.json({ found: false, error: `Product with barcode ${code} not found.` });
+  } catch (error) {
+    console.error("Server barcode lookup error:", error);
+    res.status(500).json({ found: false, error: "Unable to query barcode database." });
+  }
 });
 
 // Get User Food Logs (with optional date query YYYY-MM-DD)

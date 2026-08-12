@@ -125,6 +125,7 @@ export const LOCAL_FOODS = [
   { foodName: "Broccoli (steamed)", calories: 54, protein: 3.7, carbs: 10.0, fat: 0.6, sugar: 2.2, servingSize: "1 cup (150g)" },
   { foodName: "Sweet Potato (baked)", calories: 103, protein: 2.0, carbs: 24.0, fat: 0.2, sugar: 7.4, servingSize: "1 medium (114g)" },
   { foodName: "Almonds (raw)", calories: 164, protein: 6.0, carbs: 6.1, fat: 14.1, sugar: 1.2, servingSize: "28g (23 nuts)" },
+  { foodName: "Whey Protein Shake", calories: 140, protein: 25.0, carbs: 4.0, fat: 2.0, sugar: 1.5, servingSize: "1 shake (300ml)" },
   { foodName: "Whey Protein Powder", calories: 120, protein: 24.0, carbs: 3.0, fat: 1.5, sugar: 1.0, servingSize: "1 scoop (30g)" }
 ];
 

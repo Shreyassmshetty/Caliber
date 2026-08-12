@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, Plus, Sparkles, Camera, BookOpen, PenTool, Check, Trash2, HelpCircle, Mic } from 'lucide-react';
+import { Search, Plus, Sparkles, Camera, Barcode, BookOpen, PenTool, Check, Trash2, HelpCircle, Mic } from 'lucide-react';
 import { BarcodeScanner } from './BarcodeScanner';
 import { AIFoodScanner } from './AIFoodScanner';
 import { VoiceFoodInput } from './VoiceFoodInput';
@@ -358,7 +358,7 @@ export const FoodLogger = () => {
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
               <input
                 type="text"
-                placeholder="Search USDA database & common foods..."
+                placeholder="Search IFCT & Indian foods database..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-gray-200 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
@@ -384,10 +384,10 @@ export const FoodLogger = () => {
 
             <button
               onClick={() => setShowBarcodeScanner(true)}
-              className="bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 p-2.5 rounded-xl transition flex items-center justify-center"
+              className="bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 p-2.5 rounded-xl transition flex items-center justify-center"
               title="Scan Grocery Barcode"
             >
-              <BookOpen className="w-5 h-5" />
+              <Barcode className="w-5 h-5" />
             </button>
           </div>
 
@@ -414,9 +414,11 @@ export const FoodLogger = () => {
                       <span className="font-bold text-gray-700 block">{item.calories}</span>
                       <span className="text-[9px] text-gray-400 block uppercase font-medium">kcal</span>
                     </div>
-                    <span className="text-[10px] bg-primary/5 text-primary py-0.5 px-2 rounded-md font-semibold">
-                      {item.source === 'USDA FDC' ? 'USDA' : 'Common'}
-                    </span>
+                    {(item.source?.includes('IFCT') || item.isIndian) && (
+                      <span className="text-[10px] py-0.5 px-2 rounded-md font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        {item.source?.includes('IFCT') ? 'IFCT' : 'Indian'}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
