@@ -10,31 +10,31 @@
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "https://caliber-z2a8.onrender.com/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "https://caliber-z2a8.onrender.com/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/maskable-icon-192.png",
+      "src": "https://caliber-z2a8.onrender.com/maskable-icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/maskable-icon-512.png",
+      "src": "https://caliber-z2a8.onrender.com/maskable-icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "https://caliber-z2a8.onrender.com/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
@@ -59,13 +59,13 @@
   ],
   "screenshots": [
     {
-      "src": "/pwa-wide-screenshot.jpg",
+      "src": "https://caliber-z2a8.onrender.com/pwa-wide-screenshot.jpg",
       "sizes": "1280x720",
       "type": "image/jpeg",
       "form_factor": "wide"
     },
     {
-      "src": "/pwa-narrow-screenshot.jpg",
+      "src": "https://caliber-z2a8.onrender.com/pwa-narrow-screenshot.jpg",
       "sizes": "720x1280",
       "type": "image/jpeg",
       "form_factor": "narrow"
