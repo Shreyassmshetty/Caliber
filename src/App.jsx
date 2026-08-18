@@ -10,7 +10,7 @@ import { Settings } from './components/Settings';
 import { OfflineSyncBanner } from './components/OfflineSyncBanner';
 import { Apple, PlusCircle, Dumbbell, BarChart3, Settings as SettingsIcon, ShieldCheck, Maximize2, Minimize2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import logo from './assets/images/caliber_app_icon_1785420177978.jpg';
+import logo from './assets/images/caliber_app_icon_1787062924343.jpg';
 
 
 const AppContent = () => {

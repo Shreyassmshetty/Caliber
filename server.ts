@@ -1283,6 +1283,9 @@ Estimate the macronutrients (protein in grams, carbs in grams, fat in grams, sug
 // ==================== VITE DEVELOPMENT & PRODUCTION SERVING ====================
 
 async function startServer() {
+  const publicPath = path.join(process.cwd(), "public");
+  app.use(express.static(publicPath, { dotfiles: 'allow' }));
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: {
