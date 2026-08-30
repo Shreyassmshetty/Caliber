@@ -113,7 +113,7 @@ export const Settings = () => {
 
     setSyncingWearable(false);
     if (success) {
-      setNotification("Synced! Added +240 kcal active burn from your daily steps.");
+      setNotification("Synced! Added +240.00 kcal active burn from your daily steps.");
     } else {
       setNotification("Sync succeeded but error saving log.");
     }
@@ -209,9 +209,9 @@ export const Settings = () => {
               onChange={(e) => setGoal(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none"
             >
-              <option value="lose">Lose Weight (-500 kcal target deficit)</option>
+              <option value="lose">Lose Weight (-500.00 kcal target deficit)</option>
               <option value="maintain">Maintain Weight (balanced target)</option>
-              <option value="gain">Gain Weight (+500 kcal target surplus)</option>
+              <option value="gain">Gain Weight (+500.00 kcal target surplus)</option>
             </select>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, formatCalories } from '../context/AppContext';
 import { Search, Plus, Sparkles, Camera, Barcode, BookOpen, PenTool, Check, Trash2, HelpCircle, Mic } from 'lucide-react';
 import { BarcodeScanner } from './BarcodeScanner';
 import { AIFoodScanner } from './AIFoodScanner';
@@ -420,7 +420,7 @@ export const FoodLogger = () => {
                   </div>
                   <div className="text-right flex items-center gap-2">
                     <div>
-                      <span className="font-bold text-gray-700 block">{item.calories}</span>
+                      <span className="font-bold text-gray-700 block">{formatCalories(item.calories)}</span>
                       <span className="text-[9px] text-gray-400 block uppercase font-medium">kcal</span>
                     </div>
                     {(item.source?.includes('IFCT') || item.isIndian) && (
@@ -484,7 +484,7 @@ export const FoodLogger = () => {
                     className="p-3 text-left bg-gray-50 rounded-xl hover:bg-gray-100 border border-gray-100 transition"
                   >
                     <span className="font-bold text-[11px] text-gray-700 block truncate">{item.name}</span>
-                    <span className="text-[10px] text-primary font-semibold block mt-1">{item.cal} kcal</span>
+                    <span className="text-[10px] text-primary font-semibold block mt-1">{formatCalories(item.cal)} kcal</span>
                   </button>
                 ))}
               </div>
@@ -514,7 +514,7 @@ export const FoodLogger = () => {
           <div className="grid grid-cols-5 gap-1.5 bg-gray-50 p-2.5 rounded-xl text-center text-[11px]">
             <div>
               <span className="text-[9px] text-gray-400 block uppercase font-medium">Calories</span>
-              <span className="font-bold text-gray-700">{Math.round(selectedFood.calories * logQuantity)} kcal</span>
+              <span className="font-bold text-gray-700">{formatCalories(selectedFood.calories * logQuantity)} kcal</span>
             </div>
             <div>
               <span className="text-[9px] text-gray-400 block uppercase font-medium">Protein</span>
@@ -586,7 +586,7 @@ export const FoodLogger = () => {
               onClick={handleConfirmLog}
               className="w-full bg-primary hover:bg-primary-light text-white font-bold py-3 rounded-xl shadow-sm transition text-xs flex items-center justify-center gap-1.5"
             >
-              <Check className="w-4 h-4" /> Log {Math.round(selectedFood.calories * logQuantity)} kcal
+              <Check className="w-4 h-4" /> Log {formatCalories(selectedFood.calories * logQuantity)} kcal
             </button>
           </div>
         </div>
@@ -751,7 +751,7 @@ export const FoodLogger = () => {
                       <div className="flex-1 min-w-0 pr-2">
                         <span className="font-semibold text-gray-700 block truncate">{ing.foodName}</span>
                         <span className="text-[9px] text-gray-400">
-                          {Math.round(ing.calories * ing.quantity)} cal ({ing.servingSize})
+                          {formatCalories(ing.calories * ing.quantity)} cal ({ing.servingSize})
                         </span>
                       </div>
 
@@ -784,7 +784,7 @@ export const FoodLogger = () => {
                 <div className="grid grid-cols-4 gap-1 font-bold text-gray-700 text-[11px]">
                   <div>
                     <span className="text-[9px] text-gray-400 block font-normal uppercase">Calories</span>
-                    <span>{Math.round(recipeTotals.calories)} cal</span>
+                    <span>{formatCalories(recipeTotals.calories)} cal</span>
                   </div>
                   <div>
                     <span className="text-[9px] text-gray-400 block font-normal uppercase">Protein</span>
@@ -831,7 +831,7 @@ export const FoodLogger = () => {
                       className="p-2.5 hover:bg-gray-50 cursor-pointer transition flex justify-between border-b border-gray-50"
                     >
                       <span className="font-medium text-gray-700 truncate pr-2">{food.foodName}</span>
-                      <span className="font-bold text-primary shrink-0">{food.calories} cal</span>
+                      <span className="font-bold text-primary shrink-0">{formatCalories(food.calories)} cal</span>
                     </div>
                   ))}
                 </div>
@@ -905,7 +905,7 @@ export const FoodLogger = () => {
                   </div>
 
                   <div className="flex justify-between items-center pt-2 border-t border-gray-50 mt-1.5 text-xs">
-                    <span className="font-bold text-primary">{Math.round(meal.totalCalories)} kcal</span>
+                    <span className="font-bold text-primary">{formatCalories(meal.totalCalories)} kcal</span>
                     <button
                       onClick={() => handleLogSavedRecipe(meal)}
                       className="bg-primary hover:bg-primary-light text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-sm transition"

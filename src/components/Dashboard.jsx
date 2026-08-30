@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp, getLocalDateString } from '../context/AppContext';
+import { useApp, getLocalDateString, formatCalories } from '../context/AppContext';
 import { ChevronLeft, ChevronRight, Droplet, Dumbbell, Flame, Plus, Trash2, Calendar, Coffee, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -82,7 +82,7 @@ export const Dashboard = ({ setActiveTab }) => {
             <span className="text-sm">{icon}</span>
             <span className="font-semibold text-xs text-gray-700 uppercase tracking-wide">{title}</span>
           </div>
-          <span className="text-xs font-bold text-gray-500">{categoryCalories} kcal</span>
+          <span className="text-xs font-bold text-gray-500">{formatCalories(categoryCalories)} kcal</span>
         </div>
 
         {meals.length === 0 ? (
@@ -98,7 +98,7 @@ export const Dashboard = ({ setActiveTab }) => {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-gray-600">{Math.round(meal.calories * meal.quantity)} kcal</span>
+                  <span className="font-bold text-gray-600">{formatCalories(meal.calories * meal.quantity)} kcal</span>
                   <button
                     onClick={() => deleteFoodLog(meal.id)}
                     className="p-1 text-gray-300 hover:text-red-500 rounded transition"
@@ -180,17 +180,17 @@ export const Dashboard = ({ setActiveTab }) => {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-gray-50/50 p-2 rounded-xl text-center">
             <span className="text-[10px] text-gray-400 block uppercase font-semibold">Logged</span>
-            <span className="text-sm font-bold text-gray-700">{totalFoodCalories}</span>
+            <span className="text-sm font-bold text-gray-700">{formatCalories(totalFoodCalories)}</span>
             <span className="text-[9px] text-gray-400"> kcal</span>
           </div>
           <div className="bg-gray-50/50 p-2 rounded-xl text-center">
             <span className="text-[10px] text-gray-400 block uppercase font-semibold">Active</span>
-            <span className="text-sm font-bold text-gray-700">+{totalExerciseCalories}</span>
+            <span className="text-sm font-bold text-gray-700">+{formatCalories(totalExerciseCalories)}</span>
             <span className="text-[9px] text-gray-400"> kcal</span>
           </div>
           <div className="bg-gray-50/50 p-2 rounded-xl text-center">
             <span className="text-[10px] text-gray-400 block uppercase font-semibold">Budget</span>
-            <span className="text-sm font-bold text-gray-700">{calorieTarget}</span>
+            <span className="text-sm font-bold text-gray-700">{formatCalories(calorieTarget)}</span>
             <span className="text-[9px] text-gray-400"> kcal</span>
           </div>
         </div>
@@ -235,7 +235,7 @@ export const Dashboard = ({ setActiveTab }) => {
               <>
                 <span className="text-xs text-gray-400 uppercase font-semibold">Remaining</span>
                 <span className={`text-2xl font-black ${remainingCalories < 0 ? 'text-amber-600' : 'text-neutral-dark'}`}>
-                  {remainingCalories}
+                  {formatCalories(remainingCalories)}
                 </span>
                 <span className="text-[10px] text-gray-400">kcal</span>
               </>
@@ -397,7 +397,7 @@ export const Dashboard = ({ setActiveTab }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-amber-600">-{item.caloriesBurned} kcal</span>
+                  <span className="font-bold text-amber-600">-{formatCalories(item.caloriesBurned)} kcal</span>
                   <button
                     onClick={() => deleteExerciseLog(item.id)}
                     className="p-1 text-gray-300 hover:text-red-500 rounded transition"

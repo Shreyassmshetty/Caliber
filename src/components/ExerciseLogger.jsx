@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, formatCalories } from '../context/AppContext';
 import { Dumbbell, Plus, Check, RefreshCw, Sparkles, MapPin } from 'lucide-react';
 import { LiveRunTracker } from './LiveRunTracker';
 
@@ -188,7 +188,7 @@ export const ExerciseLogger = () => {
                 <span className="text-[10px] text-gray-400">MET rating: {preset.met}</span>
               </div>
               <span className="bg-primary/5 text-primary text-[10px] font-bold py-1 px-2.5 rounded-lg">
-                ~{Math.round(preset.met * 3.5 * (user?.profile?.weight || 75) * 30 / 200)} cal / 30m
+                ~{formatCalories(preset.met * 3.5 * (user?.profile?.weight || 75) * 30 / 200)} cal / 30m
               </span>
             </button>
           ))}

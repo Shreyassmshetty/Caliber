@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, formatCalories } from '../context/AppContext';
 import { ChevronRight, ChevronLeft, Calculator, Target, Sparkles, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -352,9 +352,9 @@ export const Onboarding = () => {
 
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'lose', label: 'Lose Weight', desc: '-500 kcal' },
-                  { id: 'maintain', label: 'Maintain', desc: '0 kcal' },
-                  { id: 'gain', label: 'Gain Muscle', desc: '+500 kcal' }
+                  { id: 'lose', label: 'Lose Weight', desc: '-500.00 kcal' },
+                  { id: 'maintain', label: 'Maintain', desc: '0.00 kcal' },
+                  { id: 'gain', label: 'Gain Muscle', desc: '+500.00 kcal' }
                 ].map((g) => (
                   <button
                     key={g.id}
@@ -379,7 +379,7 @@ export const Onboarding = () => {
                 </div>
                 <div className="text-[10px] font-semibold text-primary/80 uppercase tracking-wider">Estimated Target</div>
                 <div className="text-2xl font-black text-neutral-dark my-1">
-                  {previewCalorieTarget} <span className="text-xs font-normal text-gray-500">kcal/day</span>
+                  {formatCalories(previewCalorieTarget)} <span className="text-xs font-normal text-gray-500">kcal/day</span>
                 </div>
                 <div className="text-[10px] text-gray-400">
                   Protein: {Math.round((previewCalorieTarget * (goal === 'lose' ? 0.35 : goal === 'gain' ? 0.25 : 0.30)) / 4)}g | 

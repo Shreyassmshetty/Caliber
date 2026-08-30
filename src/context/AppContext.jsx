@@ -9,6 +9,12 @@ export const getLocalDateString = (d = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+export const formatCalories = (val) => {
+  const num = Number(val);
+  if (isNaN(num)) return '0.00';
+  return num.toFixed(2);
+};
+
 export const entryMatchesDate = (loggedAt, dateStr) => {
   if (!loggedAt || !dateStr) return false;
   if (typeof loggedAt === 'string') {
@@ -724,7 +730,7 @@ export const AppProvider = ({ children }) => {
         tempId: tempId,
         timestamp: new Date().toISOString(),
         title: foodWithDate.foodName,
-        subtitle: `${foodWithDate.calories} kcal • ${foodWithDate.mealType}`,
+        subtitle: `${formatCalories(foodWithDate.calories)} kcal • ${foodWithDate.mealType}`,
         payload: foodWithDate
       }]);
       return true;
@@ -770,7 +776,7 @@ export const AppProvider = ({ children }) => {
         tempId: tempId,
         timestamp: new Date().toISOString(),
         title: foodWithDate.foodName,
-        subtitle: `${foodWithDate.calories} kcal • ${foodWithDate.mealType}`,
+        subtitle: `${formatCalories(foodWithDate.calories)} kcal • ${foodWithDate.mealType}`,
         payload: foodWithDate
       }]);
       return true;
@@ -868,7 +874,7 @@ export const AppProvider = ({ children }) => {
         tempId: tempId,
         timestamp: new Date().toISOString(),
         title: exWithDate.activityType,
-        subtitle: `${exWithDate.caloriesBurned} kcal burned (${exWithDate.durationMinutes}m)`,
+        subtitle: `${formatCalories(exWithDate.caloriesBurned)} kcal burned (${exWithDate.durationMinutes}m)`,
         payload: exWithDate
       }]);
       return true;
@@ -910,7 +916,7 @@ export const AppProvider = ({ children }) => {
         tempId: tempId,
         timestamp: new Date().toISOString(),
         title: exWithDate.activityType,
-        subtitle: `${exWithDate.caloriesBurned} kcal burned`,
+        subtitle: `${formatCalories(exWithDate.caloriesBurned)} kcal burned`,
         payload: exWithDate
       }]);
       return true;
@@ -1046,7 +1052,7 @@ export const AppProvider = ({ children }) => {
         type: 'SAVE_CUSTOM_MEAL',
         timestamp: new Date().toISOString(),
         title: `Custom Meal: ${meal.mealName}`,
-        subtitle: `${meal.totalCalories} kcal`,
+        subtitle: `${formatCalories(meal.totalCalories)} kcal`,
         payload: meal
       }]);
       return true;
@@ -1081,7 +1087,7 @@ export const AppProvider = ({ children }) => {
         type: 'SAVE_CUSTOM_MEAL',
         timestamp: new Date().toISOString(),
         title: `Custom Meal: ${meal.mealName}`,
-        subtitle: `${meal.totalCalories} kcal`,
+        subtitle: `${formatCalories(meal.totalCalories)} kcal`,
         payload: meal
       }]);
       return true;

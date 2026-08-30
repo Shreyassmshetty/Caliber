@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useApp, getLocalDateString } from '../context/AppContext';
+import { useApp, getLocalDateString, formatCalories } from '../context/AppContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp, AlertCircle, CheckCircle, BarChart3, Calendar, Utensils, Flame, ChevronRight, ChevronLeft, Info } from 'lucide-react';
 
@@ -249,7 +249,7 @@ export const Trends = () => {
       summaryText = `Weekend logs recorded! Keep logging your weekday meals to track your full Monday–Sunday consistency.`;
       status = 'info';
     } else {
-      summaryText = `Keep logging daily meals to track your nutrition consistency against your ${calorieTarget} kcal target.`;
+      summaryText = `Keep logging daily meals to track your nutrition consistency against your ${formatCalories(calorieTarget)} kcal target.`;
       status = 'info';
     }
 
@@ -350,7 +350,7 @@ export const Trends = () => {
             <BarChart3 className="w-4 h-4 text-primary" /> Calorie Trend (Mon – Sun)
           </h3>
           <span className="text-[10px] text-gray-400 dark:text-slate-500 font-medium">
-            Target: {calorieTarget} kcal/day
+            Target: {formatCalories(calorieTarget)} kcal/day
           </span>
         </div>
 
@@ -381,7 +381,7 @@ export const Trends = () => {
                   fontSize: '12px',
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)'
                 }}
-                formatter={(value, name) => [`${value} kcal`, name]}
+                formatter={(value, name) => [`${formatCalories(value)} kcal`, name]}
                 labelFormatter={(label, items) => {
                   const item = items?.[0]?.payload;
                   return item ? `${item.fullDayName} (${item.monthDay})${item.isToday ? ' - Today' : ''}` : label;
@@ -427,14 +427,14 @@ export const Trends = () => {
           <div className="bg-gray-50/50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-gray-100 dark:border-slate-800">
             <span className="text-[10px] text-gray-400 uppercase font-semibold">Weekday Avg</span>
             <span className="text-lg font-bold text-gray-700 dark:text-slate-200 block mt-1">
-              {insights.avgWeekdayIntake > 0 ? `${insights.avgWeekdayIntake} kcal` : 'No logs'}
+              {insights.avgWeekdayIntake > 0 ? `${formatCalories(insights.avgWeekdayIntake)} kcal` : 'No logs'}
             </span>
             <span className="text-[10px] text-gray-400">Mon – Fri</span>
           </div>
           <div className="bg-gray-50/50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-gray-100 dark:border-slate-800">
             <span className="text-[10px] text-gray-400 uppercase font-semibold">Weekend Avg</span>
             <span className="text-lg font-bold text-gray-700 dark:text-slate-200 block mt-1">
-              {insights.avgWeekendIntake > 0 ? `${insights.avgWeekendIntake} kcal` : 'No logs'}
+              {insights.avgWeekendIntake > 0 ? `${formatCalories(insights.avgWeekendIntake)} kcal` : 'No logs'}
             </span>
             <span className="text-[10px] text-gray-400">Sat – Sun</span>
           </div>

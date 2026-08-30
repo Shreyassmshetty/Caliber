@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp, formatCalories } from '../context/AppContext';
 import { Play, Pause, Square, MapPin, Navigation, Activity, Clock, Flame, AlertCircle, X, Check, Footprints } from 'lucide-react';
 
 
@@ -181,7 +181,7 @@ export const LiveRunTracker = ({ onClose }) => {
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
           <Flame className="w-5 h-5 text-orange-500 mb-1" />
-          <span className="block text-sm font-bold text-gray-800">{estimatedCals}</span>
+          <span className="block text-sm font-bold text-gray-800">{formatCalories(estimatedCals)}</span>
           <span className="block text-[9px] font-bold text-gray-400 uppercase mt-0.5">Kcal</span>
         </div>
         
