@@ -1,22 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Search, RefreshCw, X, AlertCircle, Barcode, CheckCircle2 } from 'lucide-react';
-import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
+import { Camera, Search, RefreshCw, X, AlertCircle, Barcode, SwitchCamera } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export const BarcodeScanner = ({ onFoodFound, onClose }) => {
   const [barcode, setBarcode] = useState('');
   const [loading, setLoading] = useState(false);
   const [scanError, setScanError] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [facingMode, setFacingMode] = useState('user'); // Default to front camera
   const scannerRef = useRef(null);
 
-  const stopCamera = () => {
+  const stopCamera = async () => {
     if (scannerRef.current) {
       try {
-        if (typeof scannerRef.current.clear === 'function') {
-          scannerRef.current.clear();
-        } else if (typeof scannerRef.current.stop === 'function') {
-          scannerRef.current.stop();
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
         }
+        scannerRef.current.clear();
       } catch (e) {
         console.error("Camera stop error:", e);
       }
@@ -49,7 +49,7 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
           servingSize: data.product.servingSize || "100g",
           source: data.product.source || 'Barcode (Open Food Facts)'
         });
-        stopCamera();
+        await stopCamera();
       } else {
         setScanError(data?.error || `Barcode ${cleanCode} not found in Open Food Facts database.`);
       }
@@ -61,30 +61,53 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
     }
   };
 
-  const startCamera = () => {
+  const startCamera = (targetFacingMode = facingMode) => {
     setIsScanning(true);
     setScanError(null);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
-        const scanner = new Html5QrcodeScanner(
-          "qr-reader-container",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          /* verbose= */ false
-        );
+        if (scannerRef.current) {
+          try {
+            if (scannerRef.current.isScanning) {
+              await scannerRef.current.stop();
+            }
+          } catch (e) {}
+        }
 
-        scanner.render(
-          (decodedText) => {
-            setBarcode(decodedText);
-            try {
-              scanner.clear();
-            } catch(e){}
-            setIsScanning(false);
-            lookupBarcode(decodedText);
-          },
-          () => {}
-        );
-        scannerRef.current = scanner;
+        const html5QrCode = new Html5Qrcode("qr-reader-container");
+        scannerRef.current = html5QrCode;
+
+        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+        const handleSuccess = (decodedText) => {
+          setBarcode(decodedText);
+          stopCamera();
+          lookupBarcode(decodedText);
+        };
+
+        try {
+          await html5QrCode.start(
+            { facingMode: targetFacingMode },
+            config,
+            handleSuccess,
+            () => {}
+          );
+        } catch (modeErr) {
+          console.warn("Camera start with facingMode constraint failed, trying camera list:", modeErr);
+          const devices = await Html5Qrcode.getCameras();
+          if (devices && devices.length > 0) {
+            const matched = devices.find(d => 
+              targetFacingMode === 'user' 
+                ? (d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('user') || d.label.toLowerCase().includes('selfie'))
+                : (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment'))
+            ) || devices[0];
+            
+            await html5QrCode.start(matched.id, config, handleSuccess, () => {});
+          } else {
+            throw modeErr;
+          }
+        }
       } catch (err) {
         console.error("Camera setup failed:", err);
         setScanError("Camera access required to scan. Ensure camera permissions are granted.");
@@ -93,9 +116,16 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
     }, 150);
   };
 
+  const toggleCamera = async () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    await stopCamera();
+    startCamera(nextMode);
+  };
+
   // Automatically start camera when component mounts
   useEffect(() => {
-    startCamera();
+    startCamera(facingMode);
     return () => {
       stopCamera();
     };
@@ -104,11 +134,11 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
   return (
     <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-xl text-center relative max-w-sm mx-auto animate-in fade-in zoom-in-95 duration-200">
       <button
-        onClick={() => {
-          stopCamera();
+        onClick={async () => {
+          await stopCamera();
           onClose();
         }}
-        className="absolute top-3.5 right-3.5 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition"
+        className="absolute top-3.5 right-3.5 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition z-20"
       >
         <X className="w-5 h-5" />
       </button>
@@ -119,7 +149,7 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
           <span>Barcode Scanner</span>
         </div>
         <h3 className="text-sm font-bold text-gray-800">Scan Product Barcode</h3>
-        <p className="text-[11px] text-gray-400 mt-0.5">Point camera at packaged food barcode or enter code below</p>
+        <p className="text-[11px] text-gray-400 mt-0.5">Point front camera at barcode or enter code below</p>
       </div>
 
       {scanError && (
@@ -133,9 +163,21 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
       {isScanning ? (
         <div className="bg-gray-900 rounded-2xl overflow-hidden aspect-square flex flex-col justify-center items-center text-white p-2 relative mb-4 shadow-inner">
           <div id="qr-reader-container" className="w-full h-full bg-black rounded-xl overflow-hidden"></div>
+          
+          <div className="absolute top-3 left-3 z-10">
+            <button
+              onClick={toggleCamera}
+              className="bg-black/60 hover:bg-black/80 text-white p-1.5 px-3 rounded-full backdrop-blur-md transition border border-white/20 flex items-center gap-1.5 text-[11px] font-semibold"
+              title="Toggle Front/Back Camera"
+            >
+              <SwitchCamera className="w-3.5 h-3.5" />
+              <span>{facingMode === 'user' ? 'Front Cam' : 'Back Cam'}</span>
+            </button>
+          </div>
+
           <button
             onClick={stopCamera}
-            className="absolute bottom-3 bg-black/60 hover:bg-black/80 text-white font-medium text-[11px] px-3.5 py-1.5 rounded-full backdrop-blur-md transition border border-white/20"
+            className="absolute bottom-3 bg-black/60 hover:bg-black/80 text-white font-medium text-[11px] px-3.5 py-1.5 rounded-full backdrop-blur-md transition border border-white/20 z-10"
           >
             Cancel Camera
           </button>
@@ -144,11 +186,11 @@ export const BarcodeScanner = ({ onFoodFound, onClose }) => {
         <div className="bg-amber-50/50 p-6 rounded-2xl border border-dashed border-amber-200 flex flex-col items-center justify-center aspect-video mb-4">
           <Barcode className="w-10 h-10 text-amber-500/70 mb-2" />
           <button
-            onClick={startCamera}
+            onClick={() => startCamera(facingMode)}
             className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5"
           >
             <Camera className="w-4 h-4" />
-            Enable Camera Scanner
+            Enable Front Camera Scanner
           </button>
           <span className="text-[10px] text-gray-400 mt-2">Searches Open Food Facts India & Global</span>
         </div>
