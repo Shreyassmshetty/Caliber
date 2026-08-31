@@ -177,11 +177,13 @@ export const AppProvider = ({ children }) => {
 
   const fetchAllHistory = useCallback(async () => {
     if (!token) return;
+    const userEmail = user?.email?.toLowerCase().trim() || localStorage.getItem('cnt_last_email')?.toLowerCase().trim();
+
     if (!effectiveOnline) {
       try {
-        const cachedFood = localStorage.getItem('caliber_all_food');
+        const cachedFood = (userEmail && localStorage.getItem(`caliber_all_food_${userEmail}`)) || localStorage.getItem('caliber_all_food');
         if (cachedFood) setAllFoodEntries(JSON.parse(cachedFood));
-        const cachedEx = localStorage.getItem('caliber_all_exercises');
+        const cachedEx = (userEmail && localStorage.getItem(`caliber_all_exercises_${userEmail}`)) || localStorage.getItem('caliber_all_exercises');
         if (cachedEx) setAllExercises(JSON.parse(cachedEx));
       } catch (e) {
         console.error("Error reading cached history:", e);
@@ -201,25 +203,75 @@ export const AppProvider = ({ children }) => {
 
       if (foodRes.ok) {
         const foodData = await foodRes.json();
-        setAllFoodEntries(foodData || []);
-        localStorage.setItem('caliber_all_food', JSON.stringify(foodData || []));
+        if (Array.isArray(foodData) && foodData.length > 0) {
+          setAllFoodEntries(foodData);
+          localStorage.setItem('caliber_all_food', JSON.stringify(foodData));
+          if (userEmail) localStorage.setItem(`caliber_all_food_${userEmail}`, JSON.stringify(foodData));
+        } else {
+          // If server returned empty list (e.g. server container restart), check if we have local cache to restore!
+          const cachedStr = (userEmail && localStorage.getItem(`caliber_all_food_${userEmail}`)) || localStorage.getItem('caliber_all_food');
+          if (cachedStr) {
+            try {
+              const cachedList = JSON.parse(cachedStr);
+              if (Array.isArray(cachedList) && cachedList.length > 0) {
+                setAllFoodEntries(cachedList);
+                // Sync cached food entries back up to server
+                cachedList.forEach(entry => {
+                  fetch(`${apiBase}/api/food/log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(entry)
+                  }).catch(() => {});
+                });
+              } else {
+                setAllFoodEntries([]);
+              }
+            } catch (e) { setAllFoodEntries([]); }
+          } else {
+            setAllFoodEntries([]);
+          }
+        }
       }
 
       if (exRes.ok) {
         const exData = await exRes.json();
-        setAllExercises(exData || []);
-        localStorage.setItem('caliber_all_exercises', JSON.stringify(exData || []));
+        if (Array.isArray(exData) && exData.length > 0) {
+          setAllExercises(exData);
+          localStorage.setItem('caliber_all_exercises', JSON.stringify(exData));
+          if (userEmail) localStorage.setItem(`caliber_all_exercises_${userEmail}`, JSON.stringify(exData));
+        } else {
+          const cachedStr = (userEmail && localStorage.getItem(`caliber_all_exercises_${userEmail}`)) || localStorage.getItem('caliber_all_exercises');
+          if (cachedStr) {
+            try {
+              const cachedList = JSON.parse(cachedStr);
+              if (Array.isArray(cachedList) && cachedList.length > 0) {
+                setAllExercises(cachedList);
+                cachedList.forEach(entry => {
+                  fetch(`${apiBase}/api/exercises/log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(entry)
+                  }).catch(() => {});
+                });
+              } else {
+                setAllExercises([]);
+              }
+            } catch (e) { setAllExercises([]); }
+          } else {
+            setAllExercises([]);
+          }
+        }
       }
     } catch (err) {
       console.warn("Failed to fetch all history from server, using local cache", err);
       try {
-        const cachedFood = localStorage.getItem('caliber_all_food');
+        const cachedFood = (userEmail && localStorage.getItem(`caliber_all_food_${userEmail}`)) || localStorage.getItem('caliber_all_food');
         if (cachedFood) setAllFoodEntries(JSON.parse(cachedFood));
-        const cachedEx = localStorage.getItem('caliber_all_exercises');
+        const cachedEx = (userEmail && localStorage.getItem(`caliber_all_exercises_${userEmail}`)) || localStorage.getItem('caliber_all_exercises');
         if (cachedEx) setAllExercises(JSON.parse(cachedEx));
       } catch (e) {}
     }
-  }, [token, apiBase, effectiveOnline]);
+  }, [token, apiBase, effectiveOnline, user]);
 
   const fetchCustomMeals = async (authToken) => {
     if (!effectiveOnline) {
@@ -376,7 +428,9 @@ export const AppProvider = ({ children }) => {
         return false;
       }
 
+      const cleanEmail = data.user?.email?.toLowerCase().trim() || email.toLowerCase().trim();
       localStorage.setItem('cnt_token', data.token);
+      localStorage.setItem('cnt_last_email', cleanEmail);
       setToken(data.token);
       setUser(data.user);
       return true;
@@ -404,7 +458,27 @@ export const AppProvider = ({ children }) => {
         return false;
       }
 
+      const cleanEmail = data.user?.email?.toLowerCase().trim() || email.toLowerCase().trim();
       localStorage.setItem('cnt_token', data.token);
+      localStorage.setItem('cnt_last_email', cleanEmail);
+
+      // Check if there is a cached profile for this email with personal details
+      const cachedProfileStr = localStorage.getItem(`caliber_profile_${cleanEmail}`);
+      if (cachedProfileStr) {
+        try {
+          const cachedProfile = JSON.parse(cachedProfileStr);
+          if (cachedProfile && cachedProfile.age && (!data.user.profile?.weight || !data.user.profile?.onboarded)) {
+            data.user.profile = { ...cachedProfile, ...data.user.profile, onboarded: true };
+            // Sync cached profile to server
+            fetch(`${apiBase}/api/profile/update`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${data.token}` },
+              body: JSON.stringify(cachedProfile)
+            }).catch(() => {});
+          }
+        } catch(e) {}
+      }
+
       setToken(data.token);
       setUser(data.user);
       return true;
@@ -591,13 +665,56 @@ export const AppProvider = ({ children }) => {
         if (res.ok) {
           const userData = await res.json();
           setUser(userData);
+          if (userData.email) {
+            const cleanEmail = userData.email.toLowerCase().trim();
+            localStorage.setItem('cnt_last_email', cleanEmail);
+
+            // Check if profile was missing details on server, but cached locally
+            const cachedProfileStr = localStorage.getItem(`caliber_profile_${cleanEmail}`);
+            if (cachedProfileStr) {
+              try {
+                const cachedProfile = JSON.parse(cachedProfileStr);
+                if (cachedProfile && cachedProfile.age && (!userData.profile?.weight || !userData.profile?.onboarded)) {
+                  userData.profile = { ...cachedProfile, ...userData.profile, onboarded: true };
+                  setUser({ ...userData });
+                  fetch(`${apiBase}/api/profile/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(cachedProfile)
+                  }).catch(() => {});
+                }
+              } catch(e) {}
+            }
+          }
           await fetchCustomMeals(token);
           await fetchAllHistory();
         } else {
+          // Attempt recovery with stored email if server container was restarted
+          const cachedEmail = localStorage.getItem('cnt_last_email');
+          if (cachedEmail) {
+            try {
+              const reloginRes = await fetch(`${apiBase}/api/auth/google/simulate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: cachedEmail })
+              });
+              if (reloginRes.ok) {
+                const reloginData = await reloginRes.json();
+                localStorage.setItem('cnt_token', reloginData.token);
+                setToken(reloginData.token);
+                setUser(reloginData.user);
+                await fetchCustomMeals(reloginData.token);
+                await fetchAllHistory();
+                return;
+              }
+            } catch (e) {
+              console.warn("Auto re-login attempt failed", e);
+            }
+          }
           logout();
         }
       } catch (err) {
-        console.error("Auth initialization failed", err);
+        console.error("Auth initialization network issue, keeping cached session", err);
       } finally {
         setAuthLoading(false);
       }
@@ -678,7 +795,14 @@ export const AppProvider = ({ children }) => {
         return false;
       }
 
-      setUser(prev => prev ? { ...prev, profile: data.profile } : null);
+      setUser(prev => {
+        if (!prev) return null;
+        const cleanEmail = prev.email?.toLowerCase().trim();
+        if (cleanEmail) {
+          localStorage.setItem(`caliber_profile_${cleanEmail}`, JSON.stringify(data.profile));
+        }
+        return { ...prev, profile: data.profile };
+      });
       return true;
     } catch (err) {
       setError("Failed to sync profile change with server.");

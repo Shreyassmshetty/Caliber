@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const DB_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
+const DB_BACKUP_FILE = path.join(DB_DIR, 'db_backup.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'calorie-nutrition-tracker-secret-key-12345';
 
 // Initialize Supabase Client if environment variables are provided
@@ -148,6 +149,17 @@ export function initDb() {
   }
 
   if (!fs.existsSync(DB_FILE)) {
+    if (fs.existsSync(DB_BACKUP_FILE)) {
+      try {
+        const backupData = fs.readFileSync(DB_BACKUP_FILE, 'utf-8');
+        fs.writeFileSync(DB_FILE, backupData);
+        console.log("Restored db.json from db_backup.json");
+        return;
+      } catch (e) {
+        console.error("Failed to restore from backup:", e);
+      }
+    }
+
     const defaultData = {
       users: [],
       foodEntries: [],
@@ -164,30 +176,54 @@ export function readDb() {
   initDb();
   try {
     const content = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    return {
+      users: parsed.users || [],
+      foodEntries: parsed.foodEntries || [],
+      exercises: parsed.exercises || [],
+      customMeals: parsed.customMeals || [],
+      waterLogs: parsed.waterLogs || []
+    };
   } catch (error) {
-    console.error("Error reading database:", error);
+    console.error("Error reading database, restoring backup:", error);
+    if (fs.existsSync(DB_BACKUP_FILE)) {
+      try {
+        const backupData = fs.readFileSync(DB_BACKUP_FILE, 'utf-8');
+        const parsed = JSON.parse(backupData);
+        fs.writeFileSync(DB_FILE, backupData);
+        return {
+          users: parsed.users || [],
+          foodEntries: parsed.foodEntries || [],
+          exercises: parsed.exercises || [],
+          customMeals: parsed.customMeals || [],
+          waterLogs: parsed.waterLogs || []
+        };
+      } catch (e) {}
+    }
     return { users: [], foodEntries: [], exercises: [], customMeals: [], waterLogs: [] };
   }
 }
 
 // Write database
-export function writeDb(data) {
+export function writeDb(data: any) {
   try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+    const jsonStr = JSON.stringify(data, null, 2);
+    fs.writeFileSync(DB_FILE, jsonStr);
+    fs.writeFileSync(DB_BACKUP_FILE, jsonStr);
   } catch (error) {
     console.error("Error writing database:", error);
   }
 }
 
 // Token Helper functions
-export function generateToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+export function generateToken(userId: string, email: string = '') {
+  const normEmail = email ? email.toLowerCase().trim() : '';
+  return jwt.sign({ userId, email: normEmail }, JWT_SECRET, { expiresIn: '90d' });
 }
 
-export function verifyToken(token) {
+export function verifyToken(token: string) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, JWT_SECRET) as { userId?: string; email?: string } | null;
   } catch (err) {
     return null;
   }
@@ -195,12 +231,18 @@ export function verifyToken(token) {
 
 // ==================== DATABASE ADAPTERS (SUPABASE -> FIRESTORE -> LOCAL DB) ====================
 
-// 1. Get user by ID
-export async function getUserById(id) {
+// 1. Get user by ID (with fallback to email lookup & auto-recovery)
+export async function getUserById(id: string, email: string = '') {
+  const normEmail = email ? email.toLowerCase().trim() : '';
+
   if (dbSupabase) {
     try {
-      const { data, error } = await dbSupabase.from('users').select('*').eq('id', id).maybeSingle();
-      if (!error && data) {
+      let { data, error } = await dbSupabase.from('users').select('*').eq('id', id).maybeSingle();
+      if ((error || !data) && normEmail) {
+        const res = await dbSupabase.from('users').select('*').ilike('email', normEmail).maybeSingle();
+        data = res.data;
+      }
+      if (data) {
         return {
           id: data.id,
           email: data.email,
@@ -212,12 +254,37 @@ export async function getUserById(id) {
       console.warn("[Supabase Warning] getUserById error:", err);
     }
   }
+
   const db = readDb();
-  return db.users.find(u => u.id === id) || null;
+  let user = db.users.find((u: any) => u.id === id);
+  if (!user && normEmail) {
+    user = db.users.find((u: any) => u.email && u.email.toLowerCase().trim() === normEmail);
+  }
+
+  // Auto-recover user in db if missing on container restart
+  if (!user && normEmail) {
+    user = {
+      id: id || `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      email: normEmail,
+      passwordHash: `recovered_${Date.now()}`,
+      profile: {
+        onboarded: false,
+        hideCaloriesRemaining: false,
+        macroProteinPercentage: 30,
+        macroCarbsPercentage: 45,
+        macroFatPercentage: 25,
+      }
+    };
+    db.users.push(user);
+    writeDb(db);
+  }
+
+  return user || null;
 }
 
 // 2. Get user by email
-export async function getUserByEmail(email) {
+export async function getUserByEmail(email: string) {
+  if (!email) return null;
   const normEmail = email.toLowerCase().trim();
   if (dbSupabase) {
     try {
@@ -235,7 +302,7 @@ export async function getUserByEmail(email) {
     }
   }
   const db = readDb();
-  return db.users.find(u => u.email.toLowerCase() === normEmail) || null;
+  return db.users.find((u: any) => u.email && u.email.toLowerCase().trim() === normEmail) || null;
 }
 
 // 3. Create user

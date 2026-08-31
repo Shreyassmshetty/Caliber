@@ -66,12 +66,13 @@ function authenticateToken(req, res, next) {
   }
 
   const payload = verifyToken(token);
-  if (!payload) {
+  if (!payload || !payload.userId) {
     res.status(403).json({ error: "Invalid or expired token" });
     return;
   }
 
   req.userId = payload.userId;
+  req.userEmail = payload.email || '';
   next();
 }
 
@@ -86,7 +87,8 @@ app.post("/api/auth/signup", async (req, res) => {
     return;
   }
 
-  const existingUser = await getUserByEmail(email);
+  const normalizedEmail = email.toLowerCase().trim();
+  const existingUser = await getUserByEmail(normalizedEmail);
 
   if (existingUser) {
     res.status(400).json({ error: "User already exists with this email" });
@@ -94,9 +96,9 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 
   const passwordHash = bcrypt.hashSync(password, 10);
-  const newUser= {
+  const newUser = {
     id: `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    email: email.toLowerCase(),
+    email: normalizedEmail,
     passwordHash,
     profile: {
       onboarded: false,
@@ -109,7 +111,7 @@ app.post("/api/auth/signup", async (req, res) => {
 
   await createUser(newUser);
 
-  const token = generateToken(newUser.id);
+  const token = generateToken(newUser.id, newUser.email);
   res.status(201).json({
     token,
     user: {
@@ -129,14 +131,15 @@ app.post("/api/auth/login", async (req, res) => {
     return;
   }
 
-  const user = await getUserByEmail(email);
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await getUserByEmail(normalizedEmail);
 
   if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
     res.status(401).json({ error: "Invalid email or password" });
     return;
   }
 
-  const token = generateToken(user.id);
+  const token = generateToken(user.id, user.email);
   res.json({
     token,
     user: {
@@ -149,7 +152,7 @@ app.post("/api/auth/login", async (req, res) => {
 
 // Get Current User (Me)
 app.get("/api/auth/me", authenticateToken, async (req, res) => {
-  const user = await getUserById(req.userId);
+  const user = await getUserById(req.userId, req.userEmail);
 
   if (!user) {
     res.status(404).json({ error: "User not found" });
@@ -225,7 +228,7 @@ app.post("/api/auth/google/simulate", async (req, res) => {
     await createUser(user);
   }
 
-  const token = generateToken(user.id);
+  const token = generateToken(user.id, user.email);
   res.json({
     token,
     user: {
@@ -429,7 +432,7 @@ app.get(["/auth/google/callback", "/auth/google/callback/"], async (req, res) =>
       await createUser(user);
     }
 
-    const jwtToken = generateToken(user.id);
+    const jwtToken = generateToken(user.id, user.email);
 
     res.send(`
       <html>
@@ -495,7 +498,7 @@ app.post("/api/profile/update", authenticateToken, async (req, res) => {
     darkMode
   } = req.body;
 
-  const user = await getUserById(req.userId);
+  const user = await getUserById(req.userId, req.userEmail);
 
   if (!user) {
     res.status(404).json({ error: "User not found" });
