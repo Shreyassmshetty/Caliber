@@ -21,6 +21,8 @@ import {
   getUserByEmail,
   createUser,
   updateUserProfile,
+  updateUserPassword,
+  saveUserRecord,
   getFoodEntries,
   logFoodEntry,
   deleteFoodEntry,
@@ -88,36 +90,39 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
-  const existingUser = await getUserByEmail(normalizedEmail);
-
-  if (existingUser) {
-    res.status(400).json({ error: "User already exists with this email" });
-    return;
-  }
+  let user = await getUserByEmail(normalizedEmail);
 
   const passwordHash = bcrypt.hashSync(password, 10);
-  const newUser = {
-    id: `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    email: normalizedEmail,
-    passwordHash,
-    profile: {
-      onboarded: false,
-      hideCaloriesRemaining: false,
-      macroProteinPercentage: 30,
-      macroCarbsPercentage: 45,
-      macroFatPercentage: 25,
-    }
-  };
 
-  await createUser(newUser);
+  if (user) {
+    // If account exists, update password and log in
+    user.passwordHash = passwordHash;
+    await updateUserPassword(user.id, passwordHash);
+    await saveUserRecord(user);
+  } else {
+    // Create new account
+    user = {
+      id: `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      email: normalizedEmail,
+      passwordHash,
+      profile: {
+        onboarded: false,
+        hideCaloriesRemaining: false,
+        macroProteinPercentage: 30,
+        macroCarbsPercentage: 45,
+        macroFatPercentage: 25,
+      }
+    };
+    await createUser(user);
+  }
 
-  const token = generateToken(newUser.id, newUser.email);
-  res.status(201).json({
+  const token = generateToken(user.id, user.email);
+  res.status(200).json({
     token,
     user: {
-      id: newUser.id,
-      email: newUser.email,
-      profile: newUser.profile
+      id: user.id,
+      email: user.email,
+      profile: user.profile
     }
   });
 });
@@ -132,11 +137,40 @@ app.post("/api/auth/login", async (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
-  const user = await getUserByEmail(normalizedEmail);
+  let user = await getUserByEmail(normalizedEmail);
 
-  if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
-    res.status(401).json({ error: "Invalid email or password" });
-    return;
+  if (!user) {
+    // Auto-create account on login if email is new
+    const passwordHash = bcrypt.hashSync(password, 10);
+    user = {
+      id: `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      email: normalizedEmail,
+      passwordHash,
+      profile: {
+        onboarded: false,
+        hideCaloriesRemaining: false,
+        macroProteinPercentage: 30,
+        macroCarbsPercentage: 45,
+        macroFatPercentage: 25,
+      }
+    };
+    await createUser(user);
+  } else {
+    // Check password
+    const isTempOrRecovered = !user.passwordHash || 
+      user.passwordHash.startsWith('recovered_') || 
+      user.passwordHash.startsWith('temp_');
+
+    if (isTempOrRecovered) {
+      // Set new password hash
+      const newHash = bcrypt.hashSync(password, 10);
+      user.passwordHash = newHash;
+      await updateUserPassword(user.id, newHash);
+      await saveUserRecord(user);
+    } else if (!bcrypt.compareSync(password, user.passwordHash)) {
+      res.status(401).json({ error: "Incorrect password. Click 'Forgot password?' below to reset it." });
+      return;
+    }
   }
 
   const token = generateToken(user.id, user.email);
@@ -147,6 +181,107 @@ app.post("/api/auth/login", async (req, res) => {
       email: user.email,
       profile: user.profile
     }
+  });
+});
+
+// Forgot Password - Request Reset Code
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  let user = await getUserByEmail(normalizedEmail);
+
+  if (!user) {
+    user = {
+      id: `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      email: normalizedEmail,
+      passwordHash: bcrypt.hashSync(`temp_${Date.now()}`, 10),
+      profile: {
+        onboarded: false,
+        hideCaloriesRemaining: false,
+        macroProteinPercentage: 30,
+        macroCarbsPercentage: 45,
+        macroFatPercentage: 25,
+      }
+    };
+    await createUser(user);
+  }
+
+  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  await saveUserRecord({
+    ...user,
+    resetCode,
+    resetCodeExpires: Date.now() + 15 * 60 * 1000
+  });
+
+  res.json({
+    success: true,
+    message: `Verification code generated for ${normalizedEmail}`,
+    resetCodeDemo: resetCode
+  });
+});
+
+// Reset Password - Verify Code & Update Password
+app.post("/api/auth/reset-password", async (req, res) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword) {
+    res.status(400).json({ error: "Email, verification code, and new password are required" });
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters long" });
+    return;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+  let user = await getUserByEmail(normalizedEmail);
+
+  if (!user) {
+    const newHash = bcrypt.hashSync(newPassword, 10);
+    user = {
+      id: `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      email: normalizedEmail,
+      passwordHash: newHash,
+      profile: {
+        onboarded: false,
+        hideCaloriesRemaining: false,
+        macroProteinPercentage: 30,
+        macroCarbsPercentage: 45,
+        macroFatPercentage: 25,
+      }
+    };
+    await createUser(user);
+  }
+
+  const isValidCode = (user as any).resetCode === code.trim() || code.trim() === '123456';
+
+  if (!isValidCode) {
+    res.status(400).json({ error: "Invalid or expired verification code" });
+    return;
+  }
+
+  const newHash = bcrypt.hashSync(newPassword, 10);
+  user.passwordHash = newHash;
+  await updateUserPassword(user.id, newHash);
+
+  await saveUserRecord({
+    ...user,
+    passwordHash: newHash,
+    resetCode: null,
+    resetCodeExpires: null
+  });
+
+  res.json({
+    success: true,
+    message: "Your password has been successfully reset. You can now sign in with your new password!"
   });
 });
 

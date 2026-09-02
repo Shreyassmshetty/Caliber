@@ -130,7 +130,7 @@ export const LiveRunTracker = ({ onClose }) => {
     setSaving(true);
     const durationMins = Math.max(1, Math.round(durationMs / 1000 / 60));
     await logExercise({
-      activityType: `Run/Walk (${distanceKm.toFixed(2)} km, ${estimatedSteps} steps)`,
+      activityType: `Run/Walk (${parseFloat(distanceKm.toFixed(2))} km, ${estimatedSteps} steps)`,
       durationMinutes: durationMins,
       caloriesBurned: estimatedCals,
       loggedAt: new Date().toISOString()
@@ -167,7 +167,7 @@ export const LiveRunTracker = ({ onClose }) => {
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 flex flex-col items-center justify-center">
           <Activity className="w-5 h-5 text-indigo-500 mb-1" />
-          <span className="text-2xl font-black text-indigo-900">{distanceKm.toFixed(2)}</span>
+          <span className="text-2xl font-black text-indigo-900">{parseFloat(distanceKm.toFixed(2))}</span>
           <span className="text-[10px] font-bold text-indigo-400 uppercase">Kilometers</span>
         </div>
         

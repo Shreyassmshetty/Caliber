@@ -11,8 +11,9 @@ export const getLocalDateString = (d = new Date()) => {
 
 export const formatCalories = (val) => {
   const num = Number(val);
-  if (isNaN(num)) return '0.00';
-  return num.toFixed(2);
+  if (isNaN(num)) return '0';
+  const formatted = num.toFixed(2);
+  return parseFloat(formatted).toString();
 };
 
 export const entryMatchesDate = (loggedAt, dateStr) => {
@@ -484,6 +485,52 @@ export const AppProvider = ({ children }) => {
       return true;
     } catch (err) {
       setError("Network error. Please check your connection and try again.");
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const forgotPassword = async (email) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetchWithRetry(`${apiBase}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to request password reset code.");
+        return null;
+      }
+      return data;
+    } catch (err) {
+      setError("Network error. Please try again.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (email, code, newPassword) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetchWithRetry(`${apiBase}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to reset password.");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      setError("Network error. Please try again.");
       return false;
     } finally {
       setLoading(false);
@@ -1268,6 +1315,8 @@ export const AppProvider = ({ children }) => {
       login,
       logout,
       googleLogin,
+      forgotPassword,
+      resetPassword,
       updateProfile,
       setSelectedDate,
       fetchDayData,

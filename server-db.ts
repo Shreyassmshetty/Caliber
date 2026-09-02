@@ -15,10 +15,29 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 
 let dbSupabase = null;
 
+function checkAndDisableSupabaseIfUnreachable(error: any): boolean {
+  if (!error) return false;
+  const str = typeof error === 'string' ? error : (error.message || '') + ' ' + (error.details || '') + ' ' + JSON.stringify(error);
+  if (str.includes('fetch failed') || str.includes('ENOTFOUND') || str.includes('getaddrinfo')) {
+    if (dbSupabase) {
+      console.warn(`[Supabase Notice] Supabase host is unreachable or invalid. Switching to local database engine.`);
+      dbSupabase = null;
+    }
+    return true;
+  }
+  return false;
+}
+
 if (supabaseUrl && supabaseKey) {
   try {
     dbSupabase = createClient(supabaseUrl, supabaseKey);
-    console.log(`[Supabase Status] Supabase database provider initialized successfully (${supabaseUrl})`);
+    console.log(`[Supabase Status] Supabase database provider initialized (${supabaseUrl})`);
+    // Non-blocking connection check
+    dbSupabase.from('users').select('id').limit(1).then(({ error }) => {
+      checkAndDisableSupabaseIfUnreachable(error);
+    }).catch(err => {
+      checkAndDisableSupabaseIfUnreachable(err);
+    });
   } catch (err) {
     console.warn("[Supabase Warning] Could not initialize Supabase client:", err);
   }
@@ -234,36 +253,48 @@ export function verifyToken(token: string) {
 // 1. Get user by ID (with fallback to email lookup & auto-recovery)
 export async function getUserById(id: string, email: string = '') {
   const normEmail = email ? email.toLowerCase().trim() : '';
+  const db = readDb();
+  let localUser = db.users.find((u: any) => u.id === id || (normEmail && u.email && u.email.toLowerCase().trim() === normEmail));
+
+  if (localUser && localUser.passwordHash) {
+    return localUser;
+  }
 
   if (dbSupabase) {
     try {
       let { data, error } = await dbSupabase.from('users').select('*').eq('id', id).maybeSingle();
+      if (checkAndDisableSupabaseIfUnreachable(error)) return localUser || null;
       if ((error || !data) && normEmail) {
         const res = await dbSupabase.from('users').select('*').ilike('email', normEmail).maybeSingle();
+        if (checkAndDisableSupabaseIfUnreachable(res.error)) return localUser || null;
         data = res.data;
       }
       if (data) {
-        return {
+        const supaUser = {
           id: data.id,
           email: data.email,
           passwordHash: data.password_hash || data.passwordHash,
           profile: data.profile || {}
         };
+        // Sync to local
+        const userIdx = db.users.findIndex((u: any) => u.id === supaUser.id || (normEmail && u.email && u.email.toLowerCase().trim() === normEmail));
+        if (userIdx !== -1) {
+          db.users[userIdx] = { ...db.users[userIdx], ...supaUser };
+        } else {
+          db.users.push(supaUser);
+        }
+        writeDb(db);
+        return supaUser;
       }
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return localUser || null;
       console.warn("[Supabase Warning] getUserById error:", err);
     }
   }
 
-  const db = readDb();
-  let user = db.users.find((u: any) => u.id === id);
-  if (!user && normEmail) {
-    user = db.users.find((u: any) => u.email && u.email.toLowerCase().trim() === normEmail);
-  }
-
   // Auto-recover user in db if missing on container restart
-  if (!user && normEmail) {
-    user = {
+  if (!localUser && normEmail) {
+    localUser = {
       id: id || `u_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       email: normEmail,
       passwordHash: `recovered_${Date.now()}`,
@@ -275,79 +306,144 @@ export async function getUserById(id: string, email: string = '') {
         macroFatPercentage: 25,
       }
     };
-    db.users.push(user);
+    db.users.push(localUser);
     writeDb(db);
   }
 
-  return user || null;
+  return localUser || null;
 }
 
 // 2. Get user by email
 export async function getUserByEmail(email: string) {
   if (!email) return null;
   const normEmail = email.toLowerCase().trim();
+  const db = readDb();
+  let localUser = db.users.find((u: any) => u.email && u.email.toLowerCase().trim() === normEmail);
+
+  if (localUser && localUser.passwordHash) {
+    return localUser;
+  }
+
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('users').select('*').ilike('email', normEmail).maybeSingle();
+      if (checkAndDisableSupabaseIfUnreachable(error)) return localUser || null;
       if (!error && data) {
-        return {
+        const supaUser = {
           id: data.id,
           email: data.email,
           passwordHash: data.password_hash || data.passwordHash,
           profile: data.profile || {}
         };
+        const userIdx = db.users.findIndex((u: any) => u.email && u.email.toLowerCase().trim() === normEmail);
+        if (userIdx !== -1) {
+          db.users[userIdx] = { ...db.users[userIdx], ...supaUser };
+        } else {
+          db.users.push(supaUser);
+        }
+        writeDb(db);
+        return supaUser;
       }
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return localUser || null;
       console.warn("[Supabase Warning] getUserByEmail error:", err);
     }
   }
-  const db = readDb();
-  return db.users.find((u: any) => u.email && u.email.toLowerCase().trim() === normEmail) || null;
+
+  return localUser || null;
 }
 
 // 3. Create user
 export async function createUser(user) {
+  const db = readDb();
+  const existingIdx = db.users.findIndex(u => u.id === user.id || (u.email && u.email.toLowerCase().trim() === user.email?.toLowerCase().trim()));
+  if (existingIdx !== -1) {
+    db.users[existingIdx] = { ...db.users[existingIdx], ...user };
+  } else {
+    db.users.push(user);
+  }
+  writeDb(db);
+
   if (dbSupabase) {
     try {
-      const { error } = await dbSupabase.from('users').insert({
+      const { error } = await dbSupabase.from('users').upsert({
         id: user.id,
         email: user.email,
         password_hash: user.passwordHash,
         profile: user.profile
       });
-      if (!error) {
-        console.log(`User ${user.id} created in Supabase`);
-        return;
-      }
-      console.warn("[Supabase Warning] createUser returned error:", error);
+      checkAndDisableSupabaseIfUnreachable(error);
     } catch (err) {
-      console.warn("[Supabase Warning] createUser error:", err);
+      checkAndDisableSupabaseIfUnreachable(err);
     }
   }
-  const db = readDb();
-  db.users.push(user);
-  writeDb(db);
 }
 
 // 4. Update user profile
 export async function updateUserProfile(userId, profile) {
-  if (dbSupabase) {
-    try {
-      const { error } = await dbSupabase.from('users').update({ profile }).eq('id', userId);
-      if (!error) {
-        console.log(`User profile updated in Supabase for ${userId}`);
-        return;
-      }
-      console.warn("[Supabase Warning] updateUserProfile returned error:", error);
-    } catch (err) {
-      console.warn("[Supabase Warning] updateUserProfile error:", err);
-    }
-  }
   const db = readDb();
   const userIdx = db.users.findIndex(u => u.id === userId);
   if (userIdx !== -1) {
     db.users[userIdx].profile = profile;
     writeDb(db);
+  }
+
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('users').update({ profile }).eq('id', userId);
+      checkAndDisableSupabaseIfUnreachable(error);
+    } catch (err) {
+      checkAndDisableSupabaseIfUnreachable(err);
+    }
+  }
+}
+
+// 5. Update user password
+export async function updateUserPassword(userId, passwordHash) {
+  const db = readDb();
+  const userIdx = db.users.findIndex(u => u.id === userId);
+  if (userIdx !== -1) {
+    db.users[userIdx].passwordHash = passwordHash;
+    writeDb(db);
+  }
+
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('users').update({ password_hash: passwordHash }).eq('id', userId);
+      checkAndDisableSupabaseIfUnreachable(error);
+    } catch (err) {
+      checkAndDisableSupabaseIfUnreachable(err);
+    }
+  }
+}
+
+// 6. Update user object (for reset codes, etc.)
+export async function saveUserRecord(user) {
+  const db = readDb();
+  const userIdx = db.users.findIndex(u => u.id === user.id || (u.email && u.email.toLowerCase().trim() === user.email?.toLowerCase().trim()));
+  if (userIdx !== -1) {
+    db.users[userIdx] = {
+      ...db.users[userIdx],
+      ...user,
+      passwordHash: user.passwordHash || db.users[userIdx].passwordHash
+    };
+  } else {
+    db.users.push(user);
+  }
+  writeDb(db);
+
+  if (dbSupabase) {
+    try {
+      const { error } = await dbSupabase.from('users').upsert({
+        id: user.id,
+        email: user.email,
+        password_hash: user.passwordHash || (userIdx !== -1 ? db.users[userIdx].passwordHash : null),
+        profile: user.profile
+      });
+      checkAndDisableSupabaseIfUnreachable(error);
+    } catch (err) {
+      checkAndDisableSupabaseIfUnreachable(err);
+    }
   }
 }
 
@@ -380,6 +476,7 @@ export async function getFoodEntries(userId, dateStr) {
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('food_entries').select('*').eq('user_id', userId);
+      if (checkAndDisableSupabaseIfUnreachable(error)) return getFoodEntries(userId, dateStr);
       if (!error && data) {
         let entries = data.map((d) => ({
           id: d.id,
@@ -401,6 +498,7 @@ export async function getFoodEntries(userId, dateStr) {
         return entries;
       }
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return getFoodEntries(userId, dateStr);
       console.warn("[Supabase Warning] getFoodEntries error:", err);
     }
   }
@@ -430,12 +528,14 @@ export async function logFoodEntry(entry) {
         meal_type: entry.mealType,
         logged_at: entry.loggedAt
       });
+      if (checkAndDisableSupabaseIfUnreachable(error)) return logFoodEntry(entry);
       if (!error) {
         console.log(`Food entry ${entry.id} saved to Supabase`);
         return;
       }
       console.warn("[Supabase Warning] logFoodEntry returned error:", error);
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return logFoodEntry(entry);
       console.warn("[Supabase Warning] logFoodEntry error:", err);
     }
   }
@@ -449,11 +549,13 @@ export async function deleteFoodEntry(userId, id) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('food_entries').delete().eq('id', id).eq('user_id', userId);
+      if (checkAndDisableSupabaseIfUnreachable(error)) return deleteFoodEntry(userId, id);
       if (!error) {
         console.log(`Food entry ${id} deleted from Supabase`);
         return true;
       }
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return deleteFoodEntry(userId, id);
       console.warn("[Supabase Warning] deleteFoodEntry error:", err);
     }
   }
@@ -472,6 +574,7 @@ export async function getExercises(userId, dateStr) {
   if (dbSupabase) {
     try {
       const { data, error } = await dbSupabase.from('exercises').select('*').eq('user_id', userId);
+      if (checkAndDisableSupabaseIfUnreachable(error)) return getExercises(userId, dateStr);
       if (!error && data) {
         let entries = data.map((d) => ({
           id: d.id,
@@ -487,6 +590,7 @@ export async function getExercises(userId, dateStr) {
         return entries;
       }
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return getExercises(userId, dateStr);
       console.warn("[Supabase Warning] getExercises error:", err);
     }
   }
@@ -510,12 +614,14 @@ export async function logExercise(entry) {
         calories_burned: entry.caloriesBurned,
         logged_at: entry.loggedAt
       });
+      if (checkAndDisableSupabaseIfUnreachable(error)) return logExercise(entry);
       if (!error) {
         console.log(`Exercise entry ${entry.id} saved to Supabase`);
         return;
       }
       console.warn("[Supabase Warning] logExercise returned error:", error);
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return logExercise(entry);
       console.warn("[Supabase Warning] logExercise error:", err);
     }
   }
@@ -529,11 +635,13 @@ export async function deleteExercise(userId, id) {
   if (dbSupabase) {
     try {
       const { error } = await dbSupabase.from('exercises').delete().eq('id', id).eq('user_id', userId);
+      if (checkAndDisableSupabaseIfUnreachable(error)) return deleteExercise(userId, id);
       if (!error) {
         console.log(`Exercise entry ${id} deleted from Supabase`);
         return true;
       }
     } catch (err) {
+      if (checkAndDisableSupabaseIfUnreachable(err)) return deleteExercise(userId, id);
       console.warn("[Supabase Warning] deleteExercise error:", err);
     }
   }
