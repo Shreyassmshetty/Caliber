@@ -737,6 +737,62 @@ function isIndianFoodItem(foodName: string, brandName?: string | null): boolean 
   return indianKeywords.some(keyword => text.includes(keyword));
 }
 
+// Helper to extract product or serving weight in grams / ml from Open Food Facts product object
+function getOFFProductWeight(p: any): { weightGrams: number | null; displayServing: string | null } {
+  let servingQty = Number(p.serving_quantity);
+  let servingUnit = (p.serving_quantity_unit || '').toLowerCase();
+  let servingGrams: number | null = null;
+  if (!isNaN(servingQty) && servingQty > 0) {
+    if (servingUnit === 'kg' || servingUnit === 'l' || servingUnit === 'litre' || servingUnit === 'liter') {
+      servingGrams = servingQty * 1000;
+    } else if (servingUnit === 'oz') {
+      servingGrams = servingQty * 28.35;
+    } else {
+      servingGrams = servingQty;
+    }
+  }
+
+  let prodQty = Number(p.product_quantity);
+  let prodUnit = (p.product_quantity_unit || '').toLowerCase();
+  let prodGrams: number | null = null;
+  if (!isNaN(prodQty) && prodQty > 0) {
+    if (prodUnit === 'kg' || prodUnit === 'l' || prodUnit === 'litre' || prodUnit === 'liter') {
+      prodGrams = prodQty * 1000;
+    } else if (prodUnit === 'oz') {
+      prodGrams = prodQty * 28.35;
+    } else {
+      prodGrams = prodQty;
+    }
+  }
+
+  let parsedGramsFromStr: number | null = null;
+  const combinedStr = `${p.quantity || ''} ${p.serving_size || ''}`;
+  if (combinedStr.trim()) {
+    const kgMatch = combinedStr.match(/(\d+(?:\.\d+)?)\s*(kg|l|liter|liters|litre|litres)\b/i);
+    if (kgMatch) {
+      parsedGramsFromStr = parseFloat(kgMatch[1]) * 1000;
+    } else {
+      const gMatch = combinedStr.match(/(\d+(?:\.\d+)?)\s*(g|gm|gms|gram|grams|ml|mll)\b/i);
+      if (gMatch) {
+        parsedGramsFromStr = parseFloat(gMatch[1]);
+      } else {
+        const ozMatch = combinedStr.match(/(\d+(?:\.\d+)?)\s*oz\b/i);
+        if (ozMatch) {
+          parsedGramsFromStr = parseFloat(ozMatch[1]) * 28.35;
+        }
+      }
+    }
+  }
+
+  const weightGrams = prodGrams || parsedGramsFromStr || servingGrams || null;
+  let displayServing = p.quantity || p.serving_size || null;
+  if (!displayServing && weightGrams) {
+    displayServing = `${weightGrams}g`;
+  }
+
+  return { weightGrams, displayServing };
+}
+
 // Helper to parse Open Food Facts product entry
 function parseOFFProduct(p: any): any {
   const name = p.product_name_en || p.product_name || p.product_name_in || p.generic_name || p.abbreviated_product_name;
@@ -747,58 +803,82 @@ function parseOFFProduct(p: any): any {
 
   const n = p.nutriments || {};
 
-  const protein = Number(n['proteins_100g'] ?? n['proteins_serving'] ?? n['proteins'] ?? n['proteins_value'] ?? 0);
-  const carbs = Number(n['carbohydrates_100g'] ?? n['carbohydrates_serving'] ?? n['carbohydrates'] ?? n['carbohydrates_value'] ?? 0);
-  const fat = Number(n['fat_100g'] ?? n['fat_serving'] ?? n['fat'] ?? n['fat_value'] ?? 0);
-  const sugar = Number(n['sugars_100g'] ?? n['sugars_serving'] ?? n['sugars'] ?? n['sugars_value'] ?? 0);
+  const protein100g = Number(n['proteins_100g'] ?? n['proteins'] ?? n['proteins_value'] ?? 0);
+  const carbs100g = Number(n['carbohydrates_100g'] ?? n['carbohydrates'] ?? n['carbohydrates_value'] ?? 0);
+  const fat100g = Number(n['fat_100g'] ?? n['fat'] ?? n['fat_value'] ?? 0);
+  const sugar100g = Number(n['sugars_100g'] ?? n['sugars'] ?? n['sugars_value'] ?? 0);
 
-  let calories = 0;
+  let calories100g = 0;
   if (n['energy-kcal_100g'] !== undefined && n['energy-kcal_100g'] !== null) {
-    calories = Number(n['energy-kcal_100g']);
-  } else if (n['energy-kcal_serving'] !== undefined && n['energy-kcal_serving'] !== null) {
-    calories = Number(n['energy-kcal_serving']);
+    calories100g = Number(n['energy-kcal_100g']);
   } else if (n['energy-kcal'] !== undefined && n['energy-kcal'] !== null) {
-    calories = Number(n['energy-kcal']);
+    calories100g = Number(n['energy-kcal']);
   } else if (n['energy-kcal_value'] !== undefined && n['energy-kcal_value'] !== null) {
-    calories = Number(n['energy-kcal_value']);
+    calories100g = Number(n['energy-kcal_value']);
   } else if (n['energy_100g'] !== undefined && n['energy_100g'] !== null) {
     const val = Number(n['energy_100g']);
-    calories = val > 1000 ? val / 4.184 : val;
-  } else if (n['energy_serving'] !== undefined && n['energy_serving'] !== null) {
-    const val = Number(n['energy_serving']);
-    calories = val > 1000 ? val / 4.184 : val;
+    calories100g = val > 1000 ? val / 4.184 : val;
   } else if (n['energy_value'] !== undefined && n['energy_value'] !== null) {
     const val = Number(n['energy_value']);
-    calories = val > 1000 ? val / 4.184 : val;
+    calories100g = val > 1000 ? val / 4.184 : val;
   }
 
   // Calculate calories from macros if missing or 0
-  const macroCalories = Math.round(
-    (isNaN(protein) ? 0 : Math.max(0, protein)) * 4 +
-    (isNaN(carbs) ? 0 : Math.max(0, carbs)) * 4 +
-    (isNaN(fat) ? 0 : Math.max(0, fat)) * 9
+  const macroCalories100g = Math.round(
+    (isNaN(protein100g) ? 0 : Math.max(0, protein100g)) * 4 +
+    (isNaN(carbs100g) ? 0 : Math.max(0, carbs100g)) * 4 +
+    (isNaN(fat100g) ? 0 : Math.max(0, fat100g)) * 9
   );
 
-  if ((isNaN(calories) || calories <= 0) && macroCalories > 0) {
-    calories = macroCalories;
+  if ((isNaN(calories100g) || calories100g <= 0) && macroCalories100g > 0) {
+    calories100g = macroCalories100g;
   }
 
-  const finalCalories = Math.round(Math.max(0, isNaN(calories) ? 0 : calories));
-  const finalProtein = parseFloat(Math.max(0, isNaN(protein) ? 0 : protein).toFixed(1));
-  const finalCarbs = parseFloat(Math.max(0, isNaN(carbs) ? 0 : carbs).toFixed(1));
-  const finalFat = parseFloat(Math.max(0, isNaN(fat) ? 0 : fat).toFixed(1));
-  const finalSugar = parseFloat(Math.max(0, isNaN(sugar) ? 0 : sugar).toFixed(1));
+  // Check direct per-serving values from Open Food Facts
+  const calsServing = n['energy-kcal_serving'] !== undefined && n['energy-kcal_serving'] !== null ? Number(n['energy-kcal_serving']) : null;
+  const protServing = n['proteins_serving'] !== undefined && n['proteins_serving'] !== null ? Number(n['proteins_serving']) : null;
+  const carbsServing = n['carbohydrates_serving'] !== undefined && n['carbohydrates_serving'] !== null ? Number(n['carbohydrates_serving']) : null;
+  const fatServing = n['fat_serving'] !== undefined && n['fat_serving'] !== null ? Number(n['fat_serving']) : null;
+  const sugarServing = n['sugars_serving'] !== undefined && n['sugars_serving'] !== null ? Number(n['sugars_serving']) : null;
+
+  const { weightGrams, displayServing } = getOFFProductWeight(p);
+
+  let finalCalories = calories100g;
+  let finalProtein = protein100g;
+  let finalCarbs = carbs100g;
+  let finalFat = fat100g;
+  let finalSugar = sugar100g;
+  let servingSize = displayServing || "100g";
+
+  if (calsServing !== null && !isNaN(calsServing) && calsServing > 0) {
+    finalCalories = calsServing;
+    finalProtein = protServing !== null && !isNaN(protServing) ? protServing : protein100g;
+    finalCarbs = carbsServing !== null && !isNaN(carbsServing) ? carbsServing : carbs100g;
+    finalFat = fatServing !== null && !isNaN(fatServing) ? fatServing : fat100g;
+    finalSugar = sugarServing !== null && !isNaN(sugarServing) ? sugarServing : sugar100g;
+  } else if (weightGrams !== null && weightGrams > 0) {
+    const factor = weightGrams / 100;
+    finalCalories = calories100g * factor;
+    finalProtein = protein100g * factor;
+    finalCarbs = carbs100g * factor;
+    finalFat = fat100g * factor;
+    finalSugar = sugar100g * factor;
+  }
+
+  const calcCalories = Math.round(Math.max(0, isNaN(finalCalories) ? 0 : finalCalories));
+  const calcProtein = parseFloat(Math.max(0, isNaN(finalProtein) ? 0 : finalProtein).toFixed(1));
+  const calcCarbs = parseFloat(Math.max(0, isNaN(finalCarbs) ? 0 : finalCarbs).toFixed(1));
+  const calcFat = parseFloat(Math.max(0, isNaN(finalFat) ? 0 : finalFat).toFixed(1));
+  const calcSugar = parseFloat(Math.max(0, isNaN(finalSugar) ? 0 : finalSugar).toFixed(1));
 
   // Reject incomplete crowd-sourced items that have 0 calories and 0 macros (unless explicitly zero-cal beverage)
-  if (finalCalories === 0 && finalProtein === 0 && finalCarbs === 0 && finalFat === 0) {
+  if (calcCalories === 0 && calcProtein === 0 && calcCarbs === 0 && calcFat === 0) {
     const lowerName = cleanName.toLowerCase();
     const isZeroCalorieFood = /\b(water|zero|diet|black coffee|black tea|green tea|salt|sparkling)\b/i.test(lowerName);
     if (!isZeroCalorieFood) {
       return null;
     }
   }
-
-  let servingSize = p.serving_size || "100g";
 
   const isIndian = isIndianFoodItem(cleanName, brandName) ||
     (Array.isArray(p.countries_tags) && p.countries_tags.some((c: string) => c.toLowerCase().includes('india')));
@@ -809,11 +889,11 @@ function parseOFFProduct(p: any): any {
 
   return {
     foodName: displayName,
-    calories: finalCalories,
-    protein: finalProtein,
-    carbs: finalCarbs,
-    fat: finalFat,
-    sugar: finalSugar,
+    calories: calcCalories,
+    protein: calcProtein,
+    carbs: calcCarbs,
+    fat: calcFat,
+    sugar: calcSugar,
     servingSize,
     brandName: brandName || null,
     isIndian,
