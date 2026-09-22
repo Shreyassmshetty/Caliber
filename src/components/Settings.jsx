@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { LogOut, Eye, EyeOff, Save, Check, RefreshCw, Smartphone, HelpCircle, Bell, Plus, Trash2, WifiOff, CloudUpload, Layers } from 'lucide-react';
+import { LogOut, Eye, EyeOff, Save, Check, RefreshCw, Smartphone, HelpCircle, Bell, Plus, Trash2, WifiOff, CloudUpload, Layers, Footprints } from 'lucide-react';
 
 import { OfflineSyncModal } from './OfflineSyncModal';
 
@@ -348,27 +348,38 @@ export const Settings = () => {
         </p>
       </div>
 
-      {/* Wearable Device Integration */}
+      {/* Android Health Connect Step Tracking */}
       <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm space-y-3">
-        <h3 className="text-sm font-bold text-neutral-dark dark:text-white flex items-center gap-1">
-          <Smartphone className="w-4 h-4 text-primary" /> Wearable Synchronizer
-        </h3>
-        <p className="text-[11px] text-gray-400 leading-relaxed">
-          Directly pull activity data and estimated active step-burn calorie modifications from Google Fit, Apple Health, or Fitbit.
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-neutral-dark dark:text-white flex items-center gap-1.5">
+            <Footprints className="w-4 h-4 text-indigo-600" /> Android Health Connect Step Tracking
+          </h3>
+          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            Active
+          </span>
+        </div>
+        
+        <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-relaxed">
+          Caliber integrates directly with Android Health Connect using <code className="text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded">StepsRecord</code> aggregation. Steps are obtained strictly from Android Health Connect without location/GPS tracking.
         </p>
+
+        <div className="pt-1 flex items-center justify-between text-xs">
+          <span className="text-gray-500 dark:text-slate-400 font-medium">Daily Step Goal:</span>
+          <span className="font-bold text-gray-800 dark:text-white">{(user?.profile?.dailyStepGoal || 10000).toLocaleString()} steps</span>
+        </div>
 
         <button
           onClick={syncWearable}
           disabled={syncingWearable}
-          className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl border border-gray-200 transition text-xs flex items-center justify-center gap-2"
+          className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2.5 rounded-xl border border-indigo-200 transition text-xs flex items-center justify-center gap-2 shadow-xs"
         >
           {syncingWearable ? (
             <>
-              <RefreshCw className="w-4 h-4 animate-spin text-primary" /> Connecting to health store...
+              <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" /> Syncing Health Connect Steps...
             </>
           ) : (
             <>
-              <RefreshCw className="w-4 h-4 text-primary" /> Pull Logs from Apple Health / Google Fit
+              <RefreshCw className="w-4 h-4 text-indigo-600" /> Sync Steps from Health Connect
             </>
           )}
         </button>

@@ -7,8 +7,9 @@ import { FoodLogger } from './components/FoodLogger';
 import { ExerciseLogger } from './components/ExerciseLogger';
 import { Trends } from './components/Trends';
 import { Settings } from './components/Settings';
+import { StepTracker } from './components/StepTracker';
 import { OfflineSyncBanner } from './components/OfflineSyncBanner';
-import { Apple, PlusCircle, Dumbbell, BarChart3, Settings as SettingsIcon, ShieldCheck, Maximize2, Minimize2, Download } from 'lucide-react';
+import { Apple, PlusCircle, Dumbbell, BarChart3, Settings as SettingsIcon, ShieldCheck, Maximize2, Minimize2, Download, Footprints } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from './assets/images/caliber_app_icon_1785420177978.jpg';
 
@@ -225,6 +226,7 @@ const AppContent = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'dashboard' && <Dashboard setActiveTab={setActiveTab} />}
+            {activeTab === 'steptracker' && <StepTracker onClose={() => setActiveTab('dashboard')} />}
             {activeTab === 'food' && <FoodLogger />}
             {activeTab === 'exercise' && <ExerciseLogger />}
             {activeTab === 'trends' && <Trends />}

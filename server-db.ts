@@ -185,6 +185,7 @@ export function initDb() {
       exercises: [],
       customMeals: [],
       waterLogs: [],
+      dailySteps: [],
     };
     fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2));
   }
@@ -201,7 +202,8 @@ export function readDb() {
       foodEntries: parsed.foodEntries || [],
       exercises: parsed.exercises || [],
       customMeals: parsed.customMeals || [],
-      waterLogs: parsed.waterLogs || []
+      waterLogs: parsed.waterLogs || [],
+      dailySteps: parsed.dailySteps || []
     };
   } catch (error) {
     console.error("Error reading database, restoring backup:", error);
@@ -215,11 +217,12 @@ export function readDb() {
           foodEntries: parsed.foodEntries || [],
           exercises: parsed.exercises || [],
           customMeals: parsed.customMeals || [],
-          waterLogs: parsed.waterLogs || []
+          waterLogs: parsed.waterLogs || [],
+          dailySteps: parsed.dailySteps || []
         };
       } catch (e) {}
     }
-    return { users: [], foodEntries: [], exercises: [], customMeals: [], waterLogs: [] };
+    return { users: [], foodEntries: [], exercises: [], customMeals: [], waterLogs: [], dailySteps: [] };
   }
 }
 
@@ -802,4 +805,104 @@ export async function updateWaterLog(userId, dateStr, glasses) {
     writeDb(db);
     return db.waterLogs[logIdx];
   }
+}
+
+// 16. Get daily steps for user & date
+export async function getDailySteps(userId: string, dateStr: string) {
+  if (dbSupabase) {
+    try {
+      const { data, error } = await dbSupabase.from('daily_steps').select('*').eq('user_id', userId).eq('date_str', dateStr).maybeSingle();
+      if (!error && data) {
+        return {
+          id: data.id,
+          userId: data.user_id || data.userId,
+          dateStr: data.date_str || data.dateStr,
+          steps: Number(data.steps || 0),
+          goal: Number(data.goal || 10000),
+          distanceKm: Number(data.distance_km || data.distanceKm || 0),
+          calories: Number(data.calories || 0),
+          updatedAt: data.updated_at || data.updatedAt
+        };
+      }
+    } catch (err) {
+      console.warn("[Supabase Warning] getDailySteps error:", err);
+    }
+  }
+  const db = readDb();
+  return (db.dailySteps || []).find((s: any) => s.userId === userId && s.dateStr === dateStr) || null;
+}
+
+// 17. Upsert daily step record
+export async function upsertDailyStepRecord(userId: string, dateStr: string, steps: number, goal: number = 10000, distanceKm: number = 0, calories: number = 0) {
+  const stepsNum = Math.max(0, Math.round(Number(steps) || 0));
+  const goalNum = Math.max(1, Math.round(Number(goal) || 10000));
+  const distNum = parseFloat((Math.max(0, Number(distanceKm) || 0)).toFixed(2));
+  const calNum = Math.max(0, Math.round(Number(calories) || 0));
+
+  if (dbSupabase) {
+    try {
+      const stepData = {
+        id: `s_${userId}_${dateStr}`,
+        user_id: userId,
+        date_str: dateStr,
+        steps: stepsNum,
+        goal: goalNum,
+        distance_km: distNum,
+        calories: calNum,
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await dbSupabase.from('daily_steps').upsert(stepData, { onConflict: 'user_id,date_str' }).select().maybeSingle();
+      if (!error) {
+        return {
+          id: data?.id || stepData.id,
+          userId,
+          dateStr,
+          steps: stepsNum,
+          goal: goalNum,
+          distanceKm: distNum,
+          calories: calNum,
+          updatedAt: data?.updated_at || stepData.updated_at
+        };
+      }
+      console.warn("[Supabase Warning] upsertDailyStepRecord returned error:", error);
+    } catch (err) {
+      console.warn("[Supabase Warning] upsertDailyStepRecord error:", err);
+    }
+  }
+
+  const db = readDb();
+  if (!db.dailySteps) db.dailySteps = [];
+  let idx = db.dailySteps.findIndex((s: any) => s.userId === userId && s.dateStr === dateStr);
+  
+  if (idx === -1) {
+    const newRecord = {
+      id: `s_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId,
+      dateStr,
+      steps: stepsNum,
+      goal: goalNum,
+      distanceKm: distNum,
+      calories: calNum,
+      updatedAt: new Date().toISOString()
+    };
+    db.dailySteps.push(newRecord);
+    writeDb(db);
+    return newRecord;
+  } else {
+    db.dailySteps[idx].steps = stepsNum;
+    db.dailySteps[idx].goal = goalNum;
+    db.dailySteps[idx].distanceKm = distNum;
+    db.dailySteps[idx].calories = calNum;
+    db.dailySteps[idx].updatedAt = new Date().toISOString();
+    writeDb(db);
+    return db.dailySteps[idx];
+  }
+}
+
+// 18. Get step history for user
+export async function getStepHistory(userId: string, daysCount: number = 30) {
+  const db = readDb();
+  const userSteps = (db.dailySteps || []).filter((s: any) => s.userId === userId);
+  userSteps.sort((a: any, b: any) => (a.dateStr > b.dateStr ? -1 : 1));
+  return userSteps.slice(0, daysCount);
 }

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp, getLocalDateString, formatCalories } from '../context/AppContext';
-import { ChevronLeft, ChevronRight, Droplet, Dumbbell, Flame, Plus, Trash2, Calendar, Coffee, Sparkles } from 'lucide-react';
+import { HealthConnectStepProvider } from '../services/stepDataProvider';
+import { ChevronLeft, ChevronRight, Droplet, Dumbbell, Flame, Plus, Trash2, Calendar, Coffee, Sparkles, Footprints, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const Dashboard = ({ setActiveTab }) => {
@@ -11,12 +12,33 @@ export const Dashboard = ({ setActiveTab }) => {
     foodEntries,
     exercises,
     waterLog,
+    stepRecord,
+    fetchStepData,
     updateWater,
     deleteFoodLog,
     deleteExerciseLog
   } = useApp();
 
   const [dateOffset, setDateOffset] = useState(0);
+  const [liveHcSteps, setLiveHcSteps] = useState(0);
+
+  // Load steps on mount
+  useEffect(() => {
+    async function loadSteps() {
+      try {
+        const hcSteps = await HealthConnectStepProvider.getTodaySteps();
+        setLiveHcSteps(hcSteps);
+      } catch (e) {}
+      if (fetchStepData) {
+        fetchStepData(selectedDate);
+      }
+    }
+    loadSteps();
+  }, [selectedDate, fetchStepData]);
+
+  const displaySteps = liveHcSteps || stepRecord?.steps || 0;
+  const stepGoal = user?.profile?.dailyStepGoal || 10000;
+  const stepProgress = Math.min(100, Math.round((displaySteps / stepGoal) * 100));
 
   // Parse calorie targets
   const calorieTarget = user?.profile?.dailyCalorieTarget || 2000;
@@ -331,6 +353,57 @@ export const Dashboard = ({ setActiveTab }) => {
               />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Daily Steps Card (Android Health Connect) */}
+      <div 
+        onClick={() => setActiveTab('steptracker')}
+        className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-5 rounded-3xl shadow-md border border-indigo-950/40 cursor-pointer hover:shadow-lg transition-all relative overflow-hidden"
+      >
+        <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/20">
+              <Footprints className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-200">Daily Step Count</h3>
+              <p className="text-[10px] text-indigo-300/80 flex items-center gap-1 font-medium">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" /> Source: Android Health Connect
+              </p>
+            </div>
+          </div>
+
+          <span className="text-xs font-bold text-indigo-300 bg-white/10 px-2.5 py-1 rounded-full">
+            {stepProgress}% Goal
+          </span>
+        </div>
+
+        <div className="flex justify-between items-end">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black tracking-tight text-white">{displaySteps.toLocaleString()}</span>
+              <span className="text-xs font-semibold text-indigo-300">/ {stepGoal.toLocaleString()} steps</span>
+            </div>
+            <p className="text-[11px] text-indigo-200/70 mt-1">
+              Est. Distance: {HealthConnectStepProvider.calculateDistance(displaySteps, user?.profile?.height || 175)} km • {HealthConnectStepProvider.calculateCalories(displaySteps, user?.profile?.weight || 70)} kcal
+            </p>
+          </div>
+
+          <div className="text-xs font-bold text-indigo-300 flex items-center gap-1 hover:text-white transition-colors">
+            <span>Details</span>
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-white/10 rounded-full h-2 mt-3 overflow-hidden">
+          <div 
+            className="bg-indigo-400 h-2 rounded-full transition-all duration-500" 
+            style={{ width: `${stepProgress}%` }}
+          />
         </div>
       </div>
 
