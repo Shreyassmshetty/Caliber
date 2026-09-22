@@ -2,10 +2,10 @@
  * StepProviderManager.js
  * Central Orchestrator & Selector for Multi-Source Step Tracking in Caliber.
  * Priority Chain:
- * Priority 1: Health Connect (Android)
- * Priority 2: Android Hardware TYPE_STEP_COUNTER Sensor
- * Priority 3: Samsung Health SDK
- * Priority 4: Browser Motion Accelerometer Sensor
+ * Priority 1: Browser Motion Accelerometer Sensor (Phone Motion Sensor)
+ * Priority 2: Health Connect (Android)
+ * Priority 3: Android Hardware TYPE_STEP_COUNTER Sensor
+ * Priority 4: Samsung Health SDK
  *
  * Rules:
  * 1. Single Source of Truth - Never sums steps from different providers together.
@@ -26,10 +26,10 @@ export class StepProviderManager {
     this.browserMotion = new BrowserMotionStepProvider();
 
     this.providers = [
+      this.browserMotion,
       this.healthConnect,
       this.androidStepCounter,
-      this.samsungHealth,
-      this.browserMotion
+      this.samsungHealth
     ];
 
     this.activeProvider = null;
@@ -109,7 +109,14 @@ export class StepProviderManager {
       }
     }
 
-    // Priority 1: Health Connect
+    // Priority 1: Browser Motion Sensor (PWA Accelerometer)
+    if (await this.browserMotion.isAvailable()) {
+      this.setActiveProvider(this.browserMotion, 'Using Phone Motion Sensor');
+      this.initialized = true;
+      return this.browserMotion;
+    }
+
+    // Priority 2: Health Connect
     if (await this.healthConnect.isAvailable()) {
       const perm = await this.healthConnect.checkPermission();
       if (perm === 'GRANTED') {
@@ -119,7 +126,7 @@ export class StepProviderManager {
       }
     }
 
-    // Priority 2: Android Hardware TYPE_STEP_COUNTER
+    // Priority 3: Android Hardware TYPE_STEP_COUNTER
     if (await this.androidStepCounter.isAvailable()) {
       const perm = await this.androidStepCounter.checkPermission();
       if (perm === 'GRANTED') {
@@ -129,7 +136,7 @@ export class StepProviderManager {
       }
     }
 
-    // Priority 3: Samsung Health
+    // Priority 4: Samsung Health
     if (await this.samsungHealth.isAvailable()) {
       const perm = await this.samsungHealth.checkPermission();
       if (perm === 'GRANTED') {
@@ -137,13 +144,6 @@ export class StepProviderManager {
         this.initialized = true;
         return this.samsungHealth;
       }
-    }
-
-    // Priority 4: Browser Motion Sensor (PWA Accelerometer)
-    if (await this.browserMotion.isAvailable()) {
-      this.setActiveProvider(this.browserMotion, 'Using Phone Motion Sensor');
-      this.initialized = true;
-      return this.browserMotion;
     }
 
     // Provider Unavailable

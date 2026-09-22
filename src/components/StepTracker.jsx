@@ -279,10 +279,10 @@ export const StepTracker = ({ onClose }) => {
           <div className="border-t border-slate-800 pt-2 space-y-1">
             <span className="text-slate-400 font-bold block text-[10px] uppercase">Provider Priority Stack</span>
             <div className="grid grid-cols-2 gap-1 text-[10px]">
-              <div>1. Health Connect: <span className={diagnostics.providerAvailability?.healthConnect ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.healthConnect ? 'AVAILABLE' : 'OFFLINE'}</span></div>
-              <div>2. Android Step Counter: <span className={diagnostics.providerAvailability?.androidStepCounter ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.androidStepCounter ? 'AVAILABLE' : 'OFFLINE'}</span></div>
-              <div>3. Samsung Health: <span className={diagnostics.providerAvailability?.samsungHealth ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.samsungHealth ? 'AVAILABLE' : 'OFFLINE'}</span></div>
-              <div>4. Motion Sensor: <span className={diagnostics.providerAvailability?.browserMotion ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.browserMotion ? 'AVAILABLE' : 'OFFLINE'}</span></div>
+              <div>1. Motion Sensor: <span className={diagnostics.providerAvailability?.browserMotion ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.browserMotion ? 'AVAILABLE' : 'OFFLINE'}</span></div>
+              <div>2. Health Connect: <span className={diagnostics.providerAvailability?.healthConnect ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.healthConnect ? 'AVAILABLE' : 'OFFLINE'}</span></div>
+              <div>3. Android Step Counter: <span className={diagnostics.providerAvailability?.androidStepCounter ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.androidStepCounter ? 'AVAILABLE' : 'OFFLINE'}</span></div>
+              <div>4. Samsung Health: <span className={diagnostics.providerAvailability?.samsungHealth ? 'text-emerald-400' : 'text-slate-600'}>{diagnostics.providerAvailability?.samsungHealth ? 'AVAILABLE' : 'OFFLINE'}</span></div>
             </div>
           </div>
 
