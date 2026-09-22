@@ -1356,9 +1356,9 @@ app.get("/api/steps", authenticateToken, async (req, res) => {
   res.json(record);
 });
 
-// Sync Health Connect daily step count into database summary
+// Sync daily step count into database summary
 app.post("/api/steps/sync", authenticateToken, async (req, res) => {
-  const { dateStr, steps, goal, distanceKm, calories } = req.body;
+  const { dateStr, steps, goal, distanceKm, calories, source } = req.body;
 
   if (!dateStr || steps === undefined) {
     res.status(400).json({ error: "dateStr and steps count are required" });
@@ -1374,7 +1374,8 @@ app.post("/api/steps/sync", authenticateToken, async (req, res) => {
     Number(steps),
     Number(targetGoal),
     Number(distanceKm || 0),
-    Number(calories || 0)
+    Number(calories || 0),
+    source || 'health_connect'
   );
 
   res.json(record);

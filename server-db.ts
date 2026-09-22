@@ -833,11 +833,12 @@ export async function getDailySteps(userId: string, dateStr: string) {
 }
 
 // 17. Upsert daily step record
-export async function upsertDailyStepRecord(userId: string, dateStr: string, steps: number, goal: number = 10000, distanceKm: number = 0, calories: number = 0) {
+export async function upsertDailyStepRecord(userId: string, dateStr: string, steps: number, goal: number = 10000, distanceKm: number = 0, calories: number = 0, source: string = 'health_connect') {
   const stepsNum = Math.max(0, Math.round(Number(steps) || 0));
   const goalNum = Math.max(1, Math.round(Number(goal) || 10000));
   const distNum = parseFloat((Math.max(0, Number(distanceKm) || 0)).toFixed(2));
   const calNum = Math.max(0, Math.round(Number(calories) || 0));
+  const sourceStr = source || 'health_connect';
 
   if (dbSupabase) {
     try {
@@ -849,6 +850,7 @@ export async function upsertDailyStepRecord(userId: string, dateStr: string, ste
         goal: goalNum,
         distance_km: distNum,
         calories: calNum,
+        source: sourceStr,
         updated_at: new Date().toISOString()
       };
       const { data, error } = await dbSupabase.from('daily_steps').upsert(stepData, { onConflict: 'user_id,date_str' }).select().maybeSingle();
@@ -861,6 +863,7 @@ export async function upsertDailyStepRecord(userId: string, dateStr: string, ste
           goal: goalNum,
           distanceKm: distNum,
           calories: calNum,
+          source: sourceStr,
           updatedAt: data?.updated_at || stepData.updated_at
         };
       }
@@ -883,6 +886,7 @@ export async function upsertDailyStepRecord(userId: string, dateStr: string, ste
       goal: goalNum,
       distanceKm: distNum,
       calories: calNum,
+      source: sourceStr,
       updatedAt: new Date().toISOString()
     };
     db.dailySteps.push(newRecord);
@@ -893,6 +897,7 @@ export async function upsertDailyStepRecord(userId: string, dateStr: string, ste
     db.dailySteps[idx].goal = goalNum;
     db.dailySteps[idx].distanceKm = distNum;
     db.dailySteps[idx].calories = calNum;
+    db.dailySteps[idx].source = sourceStr;
     db.dailySteps[idx].updatedAt = new Date().toISOString();
     writeDb(db);
     return db.dailySteps[idx];

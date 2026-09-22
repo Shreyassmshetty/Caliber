@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp, getLocalDateString, formatCalories } from '../context/AppContext';
 import { HealthConnectStepProvider } from '../services/stepDataProvider';
+import { stepProviderManager } from '../services/StepProviderManager';
 import { ChevronLeft, ChevronRight, Droplet, Dumbbell, Flame, Plus, Trash2, Calendar, Coffee, Sparkles, Footprints, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -21,13 +22,18 @@ export const Dashboard = ({ setActiveTab }) => {
 
   const [dateOffset, setDateOffset] = useState(0);
   const [liveHcSteps, setLiveHcSteps] = useState(0);
+  const [activeProviderName, setActiveProviderName] = useState('Step Engine');
 
   // Load steps on mount
   useEffect(() => {
     async function loadSteps() {
       try {
-        const hcSteps = await HealthConnectStepProvider.getTodaySteps();
-        setLiveHcSteps(hcSteps);
+        await stepProviderManager.initialize();
+        const info = stepProviderManager.getActiveProviderInfo();
+        setActiveProviderName(info.name);
+
+        const steps = await HealthConnectStepProvider.getTodaySteps();
+        setLiveHcSteps(steps);
       } catch (e) {}
       if (fetchStepData) {
         fetchStepData(selectedDate);
@@ -371,7 +377,7 @@ export const Dashboard = ({ setActiveTab }) => {
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-200">Daily Step Count</h3>
               <p className="text-[10px] text-indigo-300/80 flex items-center gap-1 font-medium">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" /> Source: Android Health Connect
+                <ShieldCheck className="w-3 h-3 text-emerald-400" /> Source: {activeProviderName}
               </p>
             </div>
           </div>

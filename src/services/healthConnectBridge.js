@@ -95,13 +95,15 @@ export class HealthConnectBridgeJS {
       }
     }
 
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('caliber_simulated_health_connect') === 'true') {
-      const stored = localStorage.getItem('caliber_simulated_today_steps');
-      if (stored !== null) return parseInt(stored, 10) || 6428;
-      // Default simulated step count for preview mode
-      const defaultSim = 6428;
-      localStorage.setItem('caliber_simulated_today_steps', defaultSim.toString());
-      return defaultSim;
+    const bridge = window.CaliberNativeSteps || window.AndroidHealthBridge;
+    if (bridge) {
+      try {
+        const steps = bridge.getTodaySteps ? bridge.getTodaySteps() : (bridge.getHealthConnectTodaySteps ? bridge.getHealthConnectTodaySteps() : 0);
+        return typeof steps === 'number' ? Math.max(0, steps) : parseInt(steps, 10) || 0;
+      } catch (e) {
+        console.warn('Error getting today steps from Android native bridge:', e);
+        return 0;
+      }
     }
 
     return 0;
@@ -109,38 +111,20 @@ export class HealthConnectBridgeJS {
 
   /**
    * Query historical daily aggregated steps
-   * returns array of { date: 'YYYY-MM-DD', steps: 6428 }
+   * returns array of { date: 'YYYY-MM-DD', steps: number }
    */
   static async getStepHistory(days = 30) {
-    if (this.isNativeBridgeAvailable) {
+    const bridge = window.CaliberNativeSteps || window.AndroidHealthBridge;
+    if (bridge && typeof bridge.getStepHistory === 'function') {
       try {
-        const jsonStr = window.AndroidHealthBridge.getStepHistory(days);
+        const jsonStr = bridge.getStepHistory(days);
         if (jsonStr) {
           const parsed = JSON.parse(jsonStr);
           if (Array.isArray(parsed)) return parsed;
         }
       } catch (e) {
-        console.warn('Error fetching step history from AndroidHealthBridge:', e);
+        console.warn('Error fetching step history from Android native bridge:', e);
       }
-      return [];
-    }
-
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('caliber_simulated_health_connect') === 'true') {
-      const history = [];
-      const today = new Date();
-      const baseSteps = [6428, 8120, 5200, 10450, 7890, 9200, 11300, 6700, 8400, 9500, 7100, 10800, 6200, 8900];
-      
-      for (let i = 0; i < days; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        const stepVal = baseSteps[i % baseSteps.length] + Math.floor(Math.sin(i) * 1200);
-        history.push({
-          date: dateStr,
-          steps: Math.max(1200, stepVal)
-        });
-      }
-      return history;
     }
 
     return [];
