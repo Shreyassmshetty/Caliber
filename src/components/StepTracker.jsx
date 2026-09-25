@@ -23,16 +23,21 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export const StepTracker = ({ onClose }) => {
-  const { user, updateUserProfile, token } = useApp();
+  const { user, updateUserProfile, token, liveSteps = 0, activeProviderName = 'Step Engine' } = useApp();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [todaySteps, setTodaySteps] = useState(0);
+  const [todaySteps, setTodaySteps] = useState(liveSteps);
   const [historyData, setHistoryData] = useState([]);
   const [selectedRange, setSelectedRange] = useState('7days');
-  const [providerInfo, setProviderInfo] = useState({ id: 'none', name: 'Initializing...', available: false, status: 'Initializing' });
+  const [providerInfo, setProviderInfo] = useState({ id: 'none', name: activeProviderName, available: true, status: 'Active' });
   const [diagnostics, setDiagnostics] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
+
+  // Sync todaySteps with liveSteps from context
+  useEffect(() => {
+    setTodaySteps(liveSteps);
+  }, [liveSteps]);
   
   // Goal state
   const currentGoal = user?.profile?.dailyStepGoal || 10000;

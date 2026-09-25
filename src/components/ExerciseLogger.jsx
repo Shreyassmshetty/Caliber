@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp, formatCalories } from '../context/AppContext';
-import { Dumbbell, Plus, Check, RefreshCw, Sparkles, MapPin } from 'lucide-react';
+import { Dumbbell, Plus, Check, RefreshCw, Sparkles, MapPin, Footprints, Flame, Navigation, ShieldCheck, Play } from 'lucide-react';
 import { LiveRunTracker } from './LiveRunTracker';
 
 const ACTIVITY_PRESETS = [
@@ -14,7 +14,7 @@ const ACTIVITY_PRESETS = [
 ];
 
 export const ExerciseLogger = () => {
-  const { logExercise, user } = useApp();
+  const { logExercise, user, liveSteps = 0, activeProviderName = 'Step Engine', liveStepDistance = 0, liveStepCalories = 0 } = useApp();
   const [activity, setActivity] = useState('');
   const [duration, setDuration] = useState('30');
   const [calories, setCalories] = useState('200');
@@ -85,27 +85,52 @@ export const ExerciseLogger = () => {
         </div>
       )}
 
-      {/* Live Tracker Option */}
+      {/* Live Walk & Run Tracker Card */}
       <div 
-        onClick={() => setShowRunTracker(true)}
-        className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 hover:border-indigo-200 p-4 rounded-3xl cursor-pointer transition flex items-center justify-between group shadow-sm"
+        className="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white p-5 rounded-3xl shadow-md border border-indigo-950/40 relative overflow-hidden"
       >
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-500 text-white p-2.5 rounded-xl group-hover:scale-105 transition shadow-sm">
-            <MapPin className="w-5 h-5" />
+        <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/20">
+              <Footprints className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xs text-white flex items-center gap-1 uppercase tracking-wider">
+                Walk Tracker <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              </h4>
+              <p className="text-[10px] text-indigo-300/80 flex items-center gap-1 font-medium">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" /> Source: {activeProviderName}
+              </p>
+            </div>
           </div>
+
+          <button
+            onClick={() => setShowRunTracker(true)}
+            className="flex items-center gap-1 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition active:scale-95"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" /> Live Run
+          </button>
+        </div>
+
+        {/* Live Step Stats Grid */}
+        <div className="grid grid-cols-3 gap-2 bg-white/5 border border-white/10 rounded-2xl p-3 text-center">
           <div>
-            <h4 className="font-bold text-xs text-gray-800 flex items-center gap-1">
-              Live Run/Walk Tracker <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            </h4>
-            <p className="text-[10px] text-gray-500 mt-0.5">
-              Track GPS distance, pace, and estimate calories
-            </p>
+            <span className="block text-[10px] font-bold text-indigo-300 uppercase tracking-wider">Steps</span>
+            <span className="text-base font-black text-white">{liveSteps.toLocaleString()}</span>
+          </div>
+
+          <div>
+            <span className="block text-[10px] font-bold text-orange-300 uppercase tracking-wider">Calories</span>
+            <span className="text-base font-black text-white">{formatCalories(liveStepCalories)} <span className="text-[10px] text-orange-200 font-normal">kcal</span></span>
+          </div>
+
+          <div>
+            <span className="block text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Distance</span>
+            <span className="text-base font-black text-white">{liveStepDistance} <span className="text-[10px] text-emerald-200 font-normal">km</span></span>
           </div>
         </div>
-        <span className="text-[10px] bg-indigo-600 text-white px-2.5 py-1 rounded-lg font-bold shadow-sm">
-          Start
-        </span>
       </div>
 
       {/* Manual Logger Form */}

@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { stepProviderManager } from '../services/StepProviderManager';
+import { HealthConnectStepProvider } from '../services/stepDataProvider';
 
 const AppContext = createContext(undefined);
 
@@ -88,10 +90,42 @@ export const AppProvider = ({ children }) => {
   });
   const [waterLog, setWaterLog] = useState(null);
   const [stepRecord, setStepRecord] = useState(null);
+  const [liveSteps, setLiveSteps] = useState(0);
+  const [activeProviderName, setActiveProviderName] = useState('Step Engine');
   const [customMeals, setCustomMeals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Subscribe to live step updates from StepProviderManager
+  useEffect(() => {
+    let unsubscribe = null;
+    async function initSteps() {
+      try {
+        await stepProviderManager.initialize();
+        const info = stepProviderManager.getActiveProviderInfo();
+        setActiveProviderName(info.name);
+        const currentSteps = await stepProviderManager.getTodaySteps();
+        setLiveSteps(currentSteps);
+
+        unsubscribe = stepProviderManager.subscribe((steps, providerInfo) => {
+          setLiveSteps(steps);
+          if (providerInfo?.name) {
+            setActiveProviderName(providerInfo.name);
+          }
+        });
+      } catch (e) {
+        console.warn('Failed to initialize step manager in context:', e);
+      }
+    }
+    initSteps();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const liveStepDistance = HealthConnectStepProvider.calculateDistance(liveSteps, user?.profile?.height || 175);
+  const liveStepCalories = HealthConnectStepProvider.calculateCalories(liveSteps, user?.profile?.weight || 70);
 
   // Offline & Sync States
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -1355,6 +1389,10 @@ export const AppProvider = ({ children }) => {
       allExercises,
       waterLog,
       stepRecord,
+      liveSteps,
+      activeProviderName,
+      liveStepDistance,
+      liveStepCalories,
       customMeals,
       loading,
       authLoading,

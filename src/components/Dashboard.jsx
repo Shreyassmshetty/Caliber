@@ -14,6 +14,8 @@ export const Dashboard = ({ setActiveTab }) => {
     exercises,
     waterLog,
     stepRecord,
+    liveSteps,
+    activeProviderName,
     fetchStepData,
     updateWater,
     deleteFoodLog,
@@ -21,28 +23,9 @@ export const Dashboard = ({ setActiveTab }) => {
   } = useApp();
 
   const [dateOffset, setDateOffset] = useState(0);
-  const [liveHcSteps, setLiveHcSteps] = useState(0);
-  const [activeProviderName, setActiveProviderName] = useState('Step Engine');
 
-  // Load steps on mount
-  useEffect(() => {
-    async function loadSteps() {
-      try {
-        await stepProviderManager.initialize();
-        const info = stepProviderManager.getActiveProviderInfo();
-        setActiveProviderName(info.name);
-
-        const steps = await HealthConnectStepProvider.getTodaySteps();
-        setLiveHcSteps(steps);
-      } catch (e) {}
-      if (fetchStepData) {
-        fetchStepData(selectedDate);
-      }
-    }
-    loadSteps();
-  }, [selectedDate, fetchStepData]);
-
-  const displaySteps = liveHcSteps || stepRecord?.steps || 0;
+  const isToday = selectedDate === getLocalDateString();
+  const displaySteps = isToday ? (liveSteps || stepRecord?.steps || 0) : (stepRecord?.steps || 0);
   const stepGoal = user?.profile?.dailyStepGoal || 10000;
   const stepProgress = Math.min(100, Math.round((displaySteps / stepGoal) * 100));
 

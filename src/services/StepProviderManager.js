@@ -46,6 +46,31 @@ export class StepProviderManager {
     };
 
     this.loadSessionBaseline();
+
+    // Event Subscribers for Live Reactive UI Updates
+    this.listeners = new Set();
+    this.ticker = null;
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('caliber-step-event', () => {
+        this.notifyStepChange();
+      });
+    }
+  }
+
+  subscribe(callback) {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+
+  async notifyStepChange() {
+    const steps = await this.getTodaySteps();
+    const info = this.getActiveProviderInfo();
+    this.listeners.forEach(cb => {
+      try {
+        cb(steps, info);
+      } catch (e) {}
+    });
   }
 
   getTodayDateString() {
@@ -86,8 +111,16 @@ export class StepProviderManager {
     } catch (e) {}
   }
 
+  startTicker() {
+    if (this.ticker) return;
+    this.ticker = setInterval(() => {
+      this.notifyStepChange();
+    }, 1000);
+  }
+
   async initialize() {
     const today = this.getTodayDateString();
+    this.startTicker();
     if (this.sessionBaseline.dateStr !== today) {
       this.sessionBaseline = {
         dateStr: today,

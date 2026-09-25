@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp, formatCalories } from '../context/AppContext';
 import { HealthConnectStepProvider } from '../services/stepDataProvider';
+import { stepProviderManager } from '../services/StepProviderManager';
 import { Play, Pause, Square, MapPin, Navigation, Activity, Clock, Flame, AlertCircle, X, Check, Footprints, Zap, ShieldCheck } from 'lucide-react';
 
 export const LiveRunTracker = ({ onClose }) => {
-  const { logExercise, user } = useApp();
+  const { logExercise, user, liveSteps = 0, activeProviderName = 'Step Engine' } = useApp();
   
   const [isTracking, setIsTracking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -13,8 +14,8 @@ export const LiveRunTracker = ({ onClose }) => {
   const [positions, setPositions] = useState([]);
   const [distanceKm, setDistanceKm] = useState(0); 
   const [durationMs, setDurationMs] = useState(0); 
-  const [steps, setSteps] = useState(0);
-  const [initialSteps, setInitialSteps] = useState(0);
+  const [steps, setSteps] = useState(liveSteps);
+  const [initialSteps, setInitialSteps] = useState(liveSteps);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   
@@ -30,16 +31,20 @@ export const LiveRunTracker = ({ onClose }) => {
     isPausedRef.current = isPaused;
   }, [isTracking, isPaused]);
 
-  // Load initial step baseline from Health Connect
+  // Continuously sync active step count from stepProviderManager
   useEffect(() => {
-    async function loadHealthConnectSteps() {
+    async function updateStepCount() {
       try {
-        const hcSteps = await HealthConnectStepProvider.getTodaySteps();
-        setSteps(hcSteps);
-        setInitialSteps(hcSteps);
+        const currentSteps = await stepProviderManager.getTodaySteps();
+        setSteps(currentSteps);
       } catch (e) {}
     }
-    loadHealthConnectSteps();
+    updateStepCount();
+
+    stepsPollIntervalRef.current = setInterval(updateStepCount, 1000);
+    return () => {
+      if (stepsPollIntervalRef.current) clearInterval(stepsPollIntervalRef.current);
+    };
   }, []);
   
   const calcDistance = (lat1, lon1, lat2, lon2) => {
@@ -159,9 +164,12 @@ export const LiveRunTracker = ({ onClose }) => {
     return `${m}:${s}`;
   };
 
-  // Estimate calories: roughly 60-80 calories per km for user weight
+  // Estimate calories: combination of distance calories and step calories
   const weightKg = user?.profile?.weight || 75;
-  const estimatedCals = Math.round(distanceKm * weightKg * 1.036); 
+  const distanceCals = distanceKm * weightKg * 1.036;
+  const workoutSteps = isTracking ? Math.max(0, steps - initialSteps) : steps;
+  const stepCals = HealthConnectStepProvider.calculateCalories(workoutSteps || steps, weightKg);
+  const estimatedCals = Math.round(Math.max(distanceCals, stepCals)); 
 
   const currentPace = distanceKm > 0 ? (durationMs / 1000 / 60) / distanceKm : 0; // min/km
   const formatPace = (pace) => {
@@ -174,10 +182,14 @@ export const LiveRunTracker = ({ onClose }) => {
   const saveRun = async () => {
     setSaving(true);
     const durationMins = Math.max(1, Math.round(durationMs / 1000 / 60));
+    const finalWorkoutSteps = Math.max(0, steps - initialSteps);
+    const finalStepCals = HealthConnectStepProvider.calculateCalories(finalWorkoutSteps || steps, weightKg);
+    const finalCals = Math.round(Math.max(distanceKm * weightKg * 1.036, finalStepCals));
+
     await logExercise({
-      activityType: `Run/Walk (${parseFloat(distanceKm.toFixed(2))} km, ${steps} steps)`,
+      activityType: `Run/Walk (${parseFloat(distanceKm.toFixed(2))} km, ${finalWorkoutSteps || steps} steps)`,
       durationMinutes: durationMins,
-      caloriesBurned: estimatedCals,
+      caloriesBurned: Math.max(1, finalCals),
       loggedAt: new Date().toISOString()
     });
     setSaving(false);
@@ -199,7 +211,7 @@ export const LiveRunTracker = ({ onClose }) => {
           Precision Run Tracker
         </h3>
         <p className="text-xs text-indigo-600 font-semibold mt-1 flex items-center justify-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5" /> Steps: Android Health Connect
+          <ShieldCheck className="w-3.5 h-3.5" /> Source: {activeProviderName}
         </p>
       </div>
 

@@ -93,6 +93,9 @@ export class BrowserMotionStepProvider {
   saveSteps() {
     try {
       localStorage.setItem(`caliber_motion_steps_${this.dateStr}`, String(this.stepCount));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('caliber-step-event', { detail: { steps: this.stepCount } }));
+      }
     } catch (e) {}
   }
 
